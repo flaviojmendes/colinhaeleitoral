@@ -66,6 +66,26 @@ export function ColinhaBuilder() {
     toast.success(`${candidate.nomeUrna} foi adicionado à sua colinha.`);
   }
 
+  async function refreshCandidate(candidate: CandidatoColinha) {
+    const query = new URLSearchParams({
+      uf,
+      cargo: candidate.cargo,
+      numero: candidate.numero,
+    });
+    const response = await fetch(`/api/candidatos?${query}`);
+    const payload = (await response.json().catch(() => ({}))) as {
+      error?: string;
+    } & Partial<CandidatoColinha>;
+
+    if (!response.ok) {
+      throw new Error(
+        payload.error ?? "Não foi possível atualizar os detalhes.",
+      );
+    }
+
+    setCandidate(candidate.cargo, payload as CandidatoColinha);
+  }
+
   function handleReset() {
     resetColinha();
     toast.success("Colinha reiniciada.");
@@ -245,6 +265,7 @@ export function ColinhaBuilder() {
                           uf={uf}
                           confirmed
                           onClear={() => clearCandidate(cargo.slug)}
+                          onRefresh={() => refreshCandidate(candidate)}
                         />
                       ) : (
                         <SlotInput

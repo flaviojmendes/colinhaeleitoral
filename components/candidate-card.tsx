@@ -25,6 +25,7 @@ interface CandidateCardProps {
   onConfirm?: () => void;
   onClear: () => void;
   clearLabel?: string;
+  onRefresh?: () => Promise<void>;
 }
 
 function initials(name: string) {
@@ -48,10 +49,39 @@ export function CandidateCard({
   onConfirm,
   onClear,
   clearLabel = "Limpar",
+  onRefresh,
 }: CandidateCardProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
   const cargoLabel = getCargoConfig(candidato.cargo, uf).label;
+  const needsRefresh =
+    candidato.patrimonioDetalhes === undefined &&
+    candidato.gastosDetalhes === undefined;
+
+  async function handleDetailsToggle() {
+    const nextVisible = !showDetails;
+    setShowDetails(nextVisible);
+
+    if (!nextVisible || !needsRefresh || !onRefresh) {
+      return;
+    }
+
+    setRefreshing(true);
+    setRefreshError(null);
+    try {
+      await onRefresh();
+    } catch (error) {
+      setRefreshError(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível atualizar os detalhes.",
+      );
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   return (
     <div className="mt-4 overflow-hidden rounded-2xl border border-line bg-white/75 shadow-[0_8px_30px_rgba(24,36,31,0.06)]">
@@ -132,8 +162,9 @@ export function CandidateCard({
 
       <button
         type="button"
-        onClick={() => setShowDetails((visible) => !visible)}
+        onClick={() => void handleDetailsToggle()}
         aria-expanded={showDetails}
+        disabled={refreshing}
         className="mx-4 mb-4 flex h-11 w-[calc(100%-2rem)] items-center justify-center gap-2 rounded-xl border border-accent/25 bg-accent/5 text-xs font-bold text-accent transition-colors hover:border-accent hover:bg-accent/10"
       >
         {showDetails ? (
@@ -143,7 +174,19 @@ export function CandidateCard({
         )}
         {showDetails ? "Ocultar detalhes financeiros" : "Ver detalhes financeiros"}
       </button>
-      {showDetails ? <FinancialDetails candidato={candidato} /> : null}
+      {showDetails ? (
+        refreshing ? (
+          <div className="mx-4 mb-4 rounded-xl border border-line bg-paper px-4 py-5 text-center text-xs font-semibold text-muted">
+            Atualizando patrimônio e gastos no TSE…
+          </div>
+        ) : refreshError ? (
+          <div className="mx-4 mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-5 text-center text-xs font-semibold leading-5 text-red-800">
+            {refreshError}
+          </div>
+        ) : (
+          <FinancialDetails candidato={candidato} />
+        )
+      ) : null}
 
       <div className="flex items-center gap-2 border-t border-line px-4 py-3">
         {confirmed ? (
@@ -288,7 +331,7 @@ function DetailTotal({
 }) {
   return (
     <div className="rounded-lg bg-white px-3 py-2">
-      <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted">
         {label}
       </p>
       <p className="mt-1 text-xs font-black text-ink">{formatBRL(value)}</p>
