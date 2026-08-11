@@ -57,8 +57,9 @@ export function CandidateCard({
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const cargoLabel = getCargoConfig(candidato.cargo, uf).label;
   const needsRefresh =
-    candidato.patrimonioDetalhes === undefined &&
-    candidato.gastosDetalhes === undefined;
+    candidato.patrimonioDetalhes === undefined ||
+    candidato.gastosDetalhes === undefined ||
+    candidato.gastosPartido === undefined;
 
   async function handleDetailsToggle() {
     const nextVisible = !showDetails;
@@ -318,6 +319,79 @@ function FinancialDetails({ candidato }: { candidato: CandidatoColinha }) {
           </p>
         )}
       </section>
+
+      {candidato.gastosPartido ? (
+        <section className="border-t border-line p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h4 className="text-xs font-black uppercase tracking-[0.12em] text-ink">
+                Gastos do partido
+              </h4>
+              <p className="mt-1 text-[11px] font-semibold text-muted">
+                {candidato.gastosPartido.partido}
+              </p>
+            </div>
+            <span
+              className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-widest ${
+                candidato.gastosPartido.disponivel
+                  ? "bg-accent/10 text-accent"
+                  : "bg-paper-deep text-muted"
+              }`}
+            >
+              {candidato.gastosPartido.disponivel
+                ? "Publicado"
+                : "Não publicado"}
+            </span>
+          </div>
+
+          {candidato.gastosPartido.disponivel ? (
+            <>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <DetailTotal
+                  label="Contratado"
+                  value={candidato.gastosPartido.totalContratado}
+                />
+                <DetailTotal
+                  label="Pago"
+                  value={candidato.gastosPartido.totalPago}
+                />
+                <div className="col-span-2">
+                  <DetailTotal
+                    label="Limite de gastos"
+                    value={candidato.gastosPartido.limiteGastos}
+                  />
+                </div>
+              </div>
+              {candidato.gastosPartido.detalhes.length > 0 ? (
+                <ul className="mt-3 divide-y divide-line/70">
+                  {candidato.gastosPartido.detalhes.map((expense, index) => (
+                    <li
+                      key={`${expense.categoria}-${index}`}
+                      className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
+                    >
+                      <span className="min-w-0 text-xs font-bold leading-5 text-ink">
+                        {expense.categoria}
+                      </span>
+                      <span className="shrink-0 text-right text-xs font-bold text-ink">
+                        {formatBRL(expense.valor)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-3 text-xs leading-5 text-muted">
+                  O TSE não publicou categorias detalhadas para este partido.
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="mt-3 text-xs leading-5 text-muted">
+              A prestação de contas partidária ainda não foi publicada para
+              esta eleição, UF ou diretório.
+            </p>
+          )}
+        </section>
+      ) : null}
     </div>
   );
 }

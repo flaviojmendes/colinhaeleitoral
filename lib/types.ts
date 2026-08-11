@@ -12,6 +12,7 @@ export interface CandidatoColinha {
   id: string;
   numero: string;
   nomeUrna: string;
+  nomeCompleto?: string;
   partido: string;
   cargo: CargoSlug;
   fotoUrl: string | null;
@@ -19,6 +20,7 @@ export interface CandidatoColinha {
   totalGastos: number | null;
   patrimonioDetalhes?: PatrimonioDetalhe[];
   gastosDetalhes?: GastoDetalhe[];
+  gastosPartido?: GastosPartido;
   totalGastosPagos?: number | null;
   limiteGastos?: number | null;
   situacao?: string;
@@ -36,6 +38,39 @@ export interface GastoDetalhe {
   valor: number;
 }
 
+export interface GastosPartido {
+  partido: string;
+  disponivel: boolean;
+  totalContratado: number | null;
+  totalPago: number | null;
+  limiteGastos: number | null;
+  detalhes: GastoDetalhe[];
+}
+
+export interface ProcessoJudicial {
+  id: string;
+  numeroProcesso: string;
+  tribunal: string;
+  classe: string | null;
+  assuntos: string[];
+  dataAjuizamento: string | null;
+  poloCandidato: string | null;
+}
+
+export interface DataJudTribunalResult {
+  alias: string;
+  nome: string;
+  processos: ProcessoJudicial[];
+  totalEncontrado: number;
+  disponivel: boolean;
+  erro?: string;
+}
+
+export interface DataJudResponse {
+  nomeConsultado: string;
+  tribunais: DataJudTribunalResult[];
+}
+
 export interface CandidateListItem {
   id: string;
   numero: string;
@@ -50,6 +85,7 @@ export interface TSEParty {
   numero?: number | string | null;
   sigla?: string | null;
   nome?: string | null;
+  sqPrestadorConta?: number | string | null;
 }
 
 export interface TSECargo {
@@ -60,6 +96,7 @@ export interface TSECargo {
 export interface TSECandidateSummary {
   id: number | string;
   nomeUrna?: string | null;
+  nomeCompleto?: string | null;
   numero?: number | string | null;
   fotoUrl?: string | null;
   descricaoSituacao?: string | null;

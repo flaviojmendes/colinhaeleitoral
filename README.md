@@ -40,11 +40,14 @@ Os endpoints usados são:
 GET /candidatura/listar/2026/{UF}/20322002026/{cargo}/candidatos?partido={n}
 GET /candidatura/buscar/2026/{UF}/20322002026/candidato/{id}
 GET /prestador/consulta/20322002026/2026/{UF}/{cargo}/{partido}/{numero}/{id}
+GET /prestador/consulta/partido/20322002026/2026/{UF}/{codigoOrgao}/{partido}
 ```
 
 Na interface, o botão “Escolher pela lista de candidatos” usa
 `/api/candidatos?uf={UF}&cargo={cargo}&lista=true`, filtra por nome, número ou
-partido e busca os detalhes completos somente depois da escolha.
+partido e busca os detalhes completos somente depois da escolha. Os detalhes
+financeiros também incluem, quando publicados pelo TSE, os gastos do
+diretório partidário do candidato.
 
 Em produção, a função fica preferencialmente na região `gru1` (São Paulo).
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).

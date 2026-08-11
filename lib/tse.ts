@@ -10,8 +10,10 @@ import type {
   CandidatoColinha,
   CargoSlug,
   GastoDetalhe,
+  GastosPartido,
   PatrimonioDetalhe,
   TSEAccountsResponse,
+  TSEParty,
   TSECandidateDetails,
   TSECandidateListResponse,
 } from "@/lib/types";
@@ -88,6 +90,59 @@ function buildExpenseDetails(
       ? []
       : [{ categoria, quantidade: null, valor: value }];
   });
+}
+
+function unavailablePartyExpenses(party: string): GastosPartido {
+  return {
+    partido: party,
+    disponivel: false,
+    totalContratado: null,
+    totalPago: null,
+    limiteGastos: null,
+    detalhes: [],
+  };
+}
+
+async function fetchPartyExpenses(
+  electionUf: string,
+  partyNumber: string,
+  partyName: string,
+  signal: AbortSignal,
+): Promise<GastosPartido> {
+  try {
+    const parties = await fetchJson<TSEParty[]>(
+      `${TSE_BASE_URL}/prestador/campanha/partidos/${TSE_ELECTION_ID}`,
+      {
+        signal,
+        next: { revalidate: 3600 },
+      },
+    );
+    const party = parties.find(
+      (item) => String(item.numero) === String(Number(partyNumber)),
+    );
+    const codigoOrgao = String(party?.sqPrestadorConta ?? partyNumber);
+    const accountUrl = `${TSE_BASE_URL}/prestador/consulta/partido/${TSE_ELECTION_ID}/${TSE_ELECTION_YEAR}/${electionUf}/${codigoOrgao}/${partyNumber}`;
+    const account = await fetchJson<TSEAccountsResponse>(accountUrl, {
+      signal,
+      next: { revalidate: 900 },
+    });
+    const despesas = account.despesas;
+
+    if (!despesas) {
+      return unavailablePartyExpenses(partyName);
+    }
+
+    return {
+      partido: party?.sigla ?? partyName,
+      disponivel: true,
+      totalContratado: asNumber(despesas.totalDespesasContratadas),
+      totalPago: asNumber(despesas.totalDespesasPagas),
+      limiteGastos: asNumber(despesas.valorLimiteDeGastos),
+      detalhes: buildExpenseDetails(account),
+    };
+  } catch {
+    return unavailablePartyExpenses(partyName);
+  }
 }
 
 async function fetchJson<T>(
@@ -206,8 +261,12 @@ export async function lookupCandidate(
   const candidateId = encodeURIComponent(String(summary.id));
   const detailUrl = `${TSE_BASE_URL}/candidatura/buscar/${TSE_ELECTION_YEAR}/${electionUf}/${TSE_ELECTION_ID}/candidato/${candidateId}`;
   const accountsUrl = `${TSE_BASE_URL}/prestador/consulta/${TSE_ELECTION_ID}/${TSE_ELECTION_YEAR}/${electionUf}/${config.tseCode}/${partyNumber}/${formattedNumber}/${candidateId}`;
+  const summaryParty =
+    summary.partido?.sigla ??
+    summary.partido?.nome ??
+    "Partido não informado";
 
-  const [details, accounts] = await Promise.all([
+  const [details, accounts, gastosPartido] = await Promise.all([
     fetchJson<TSECandidateDetails>(detailUrl, {
       signal,
       next: { revalidate: 900 },
@@ -216,6 +275,7 @@ export async function lookupCandidate(
       signal,
       next: { revalidate: 900 },
     }),
+    fetchPartyExpenses(electionUf, partyNumber, summaryParty, signal),
   ]);
 
   const patrimonioDeclarado = Array.isArray(details.bens)
@@ -241,13 +301,12 @@ export async function lookupCandidate(
   const partido =
     details.partido?.sigla ??
     details.partido?.nome ??
-    summary.partido?.sigla ??
-    summary.partido?.nome ??
-    "Partido não informado";
+    summaryParty;
 
   return {
     id: String(details.id ?? summary.id),
     numero: formatCandidateNumber(details.numero ?? summary.numero ?? numero, config.maxLength),
+    nomeCompleto: details.nomeCompleto ?? summary.nomeCompleto ?? undefined,
     nomeUrna: details.nomeUrna ?? summary.nomeUrna ?? "Nome não informado",
     partido,
     cargo,
@@ -256,6 +315,7 @@ export async function lookupCandidate(
     totalGastos: asNumber(accounts.despesas?.totalDespesasContratadas),
     patrimonioDetalhes,
     gastosDetalhes,
+    gastosPartido,
     totalGastosPagos: asNumber(accounts.despesas?.totalDespesasPagas),
     limiteGastos: asNumber(accounts.despesas?.valorLimiteDeGastos),
     situacao:
