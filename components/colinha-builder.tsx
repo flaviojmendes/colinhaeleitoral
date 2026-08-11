@@ -29,22 +29,26 @@ export function ColinhaBuilder() {
   const setCandidate = useCandidatosStore((state) => state.setCandidate);
   const clearCandidate = useCandidatosStore((state) => state.clearCandidate);
   const resetColinha = useCandidatosStore((state) => state.resetColinha);
-  const [hydrated, setHydrated] = useState(() =>
-    useCandidatosStore.persist.hasHydrated(),
-  );
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    if (hydrated) {
+    const persist = useCandidatosStore.persist;
+    if (!persist) {
       return;
     }
 
-    const unsubscribe = useCandidatosStore.persist.onFinishHydration(() => {
+    if (persist.hasHydrated()) {
+      const timer = window.setTimeout(() => setHydrated(true), 0);
+      return () => window.clearTimeout(timer);
+    }
+
+    const unsubscribe = persist.onFinishHydration(() => {
       setHydrated(true);
     });
-    void useCandidatosStore.persist.rehydrate();
+    void persist.rehydrate();
 
     return unsubscribe;
-  }, [hydrated]);
+  }, []);
 
   const confirmedCount = useMemo(
     () => CARGOS_2026.filter((cargo) => Boolean(slots[cargo.slug])).length,

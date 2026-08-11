@@ -10,22 +10,26 @@ import { useCandidatosStore } from "@/store/candidatos-store";
 export function PrintSheet() {
   const uf = useCandidatosStore((state) => state.uf);
   const slots = useCandidatosStore((state) => state.slots);
-  const [hydrated, setHydrated] = useState(() =>
-    useCandidatosStore.persist.hasHydrated(),
-  );
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    if (hydrated) {
+    const persist = useCandidatosStore.persist;
+    if (!persist) {
       return;
     }
 
-    const unsubscribe = useCandidatosStore.persist.onFinishHydration(() => {
+    if (persist.hasHydrated()) {
+      const timer = window.setTimeout(() => setHydrated(true), 0);
+      return () => window.clearTimeout(timer);
+    }
+
+    const unsubscribe = persist.onFinishHydration(() => {
       setHydrated(true);
     });
-    void useCandidatosStore.persist.rehydrate();
+    void persist.rehydrate();
 
     return unsubscribe;
-  }, [hydrated]);
+  }, []);
 
   const confirmed = useMemo(
     () =>
