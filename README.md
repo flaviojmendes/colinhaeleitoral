@@ -23,6 +23,7 @@ alternativo ou o Redis da Vercel:
 
 - `TSE_BASE_URL`: base da API DivulgaCandContas.
 - `KV_REST_API_URL` e `KV_REST_API_TOKEN`: credenciais do Vercel KV/Upstash.
+- `DATAJUD_API_KEY`: chave privada do CNJ para consultar processos judiciais.
 
 ## Arquitetura
 
@@ -33,6 +34,9 @@ alternativo ou o Redis da Vercel:
 - `store/candidatos-store.ts`: slots da colinha persistidos no navegador com
   Zustand.
 - `app/colinha/page.tsx`: folha de impressão em alto contraste, sem fotos.
+- `lib/datajud.ts`: consulta do Datajud nos tribunais estadual e federal da UF.
+- As certidões PDF publicadas no registro do candidato pelo TSE são exibidas
+  na mesma seção jurídica.
 
 Os endpoints usados são:
 
@@ -48,6 +52,11 @@ Na interface, o botão “Escolher pela lista de candidatos” usa
 partido e busca os detalhes completos somente depois da escolha. Os detalhes
 financeiros também incluem, quando publicados pelo TSE, os gastos do
 diretório partidário do candidato.
+
+O botão “Consultar processos judiciais” consulta o TJ e o TRF correspondentes
+à UF selecionada. A busca é feita por nome completo, pode conter homônimos e
+não substitui certidão oficial. A chave do Datajud deve ficar apenas no
+ambiente do servidor, nunca no código ou no navegador.
 
 Em produção, a função fica preferencialmente na região `gru1` (São Paulo).
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).

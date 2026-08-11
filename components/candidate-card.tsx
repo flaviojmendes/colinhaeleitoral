@@ -18,6 +18,8 @@ import { getCargoConfig } from "@/lib/cargos";
 import { formatBRL } from "@/lib/format";
 import type { CandidatoColinha } from "@/lib/types";
 
+import { JudicialRecords } from "./judicial-records";
+
 interface CandidateCardProps {
   candidato: CandidatoColinha;
   uf: string;
@@ -59,7 +61,8 @@ export function CandidateCard({
   const needsRefresh =
     candidato.patrimonioDetalhes === undefined ||
     candidato.gastosDetalhes === undefined ||
-    candidato.gastosPartido === undefined;
+    candidato.gastosPartido === undefined ||
+    candidato.certidoes === undefined;
 
   async function handleDetailsToggle() {
     const nextVisible = !showDetails;
@@ -188,6 +191,11 @@ export function CandidateCard({
           <FinancialDetails candidato={candidato} />
         )
       ) : null}
+      <JudicialRecords
+        nome={candidato.nomeCompleto ?? candidato.nomeUrna}
+        uf={uf}
+        certidoes={candidato.certidoes}
+      />
 
       <div className="flex items-center gap-2 border-t border-line px-4 py-3">
         {confirmed ? (

@@ -7,6 +7,7 @@ import {
 import type {
   CandidateListItem,
   CandidateLookupParams,
+  CertidaoCandidato,
   CandidatoColinha,
   CargoSlug,
   GastoDetalhe,
@@ -42,6 +43,46 @@ function asNumber(value: number | string | null | undefined): number | null {
 
 function partyNumberFromCandidateNumber(numero: string): string {
   return numero.length <= 2 ? numero : numero.slice(0, 2);
+}
+
+function certificateLabel(fileName: string): string {
+  const normalizedName = fileName.toLocaleLowerCase("pt-BR");
+
+  if (normalizedName.includes("cert_jf")) {
+    return "Certidão da Justiça Federal";
+  }
+  if (normalizedName.includes("cert_tj_1g")) {
+    return "Certidão do Tribunal de Justiça — 1º grau";
+  }
+  if (normalizedName.includes("cert_tj_2g")) {
+    return "Certidão do Tribunal de Justiça — 2º grau";
+  }
+
+  return "Certidão apresentada ao TSE";
+}
+
+function buildCertificates(
+  files: TSECandidateDetails["arquivos"],
+): CertidaoCandidato[] {
+  const documentBase = TSE_BASE_URL.replace(
+    /\/rest\/v1\/?$/,
+    "/rest/arquivo/doc",
+  );
+
+  return (files ?? []).flatMap((file) => {
+    if (!file.idArquivo || !file.nome || !/pdf/i.test(file.tipo ?? "pdf")) {
+      return [];
+    }
+
+    return [
+      {
+        id: String(file.idArquivo),
+        nome: certificateLabel(file.nome),
+        url: `${documentBase}/${file.idArquivo}`,
+        tipo: file.tipo ?? "pdf",
+      },
+    ];
+  });
 }
 
 function buildExpenseDetails(
@@ -297,6 +338,7 @@ export async function lookupCandidate(
       })
     : [];
   const gastosDetalhes = buildExpenseDetails(accounts);
+  const certidoes = buildCertificates(details.arquivos);
 
   const partido =
     details.partido?.sigla ??
@@ -316,6 +358,7 @@ export async function lookupCandidate(
     patrimonioDetalhes,
     gastosDetalhes,
     gastosPartido,
+    certidoes,
     totalGastosPagos: asNumber(accounts.despesas?.totalDespesasPagas),
     limiteGastos: asNumber(accounts.despesas?.valorLimiteDeGastos),
     situacao:

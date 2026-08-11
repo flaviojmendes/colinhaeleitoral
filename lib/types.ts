@@ -21,6 +21,7 @@ export interface CandidatoColinha {
   patrimonioDetalhes?: PatrimonioDetalhe[];
   gastosDetalhes?: GastoDetalhe[];
   gastosPartido?: GastosPartido;
+  certidoes?: CertidaoCandidato[];
   totalGastosPagos?: number | null;
   limiteGastos?: number | null;
   situacao?: string;
@@ -45,6 +46,13 @@ export interface GastosPartido {
   totalPago: number | null;
   limiteGastos: number | null;
   detalhes: GastoDetalhe[];
+}
+
+export interface CertidaoCandidato {
+  id: string;
+  nome: string;
+  url: string;
+  tipo: string;
 }
 
 export interface ProcessoJudicial {
@@ -119,6 +127,15 @@ export interface TSECandidateDetails extends TSECandidateSummary {
   bens?: TSEAsset[] | null;
   totalDeBens?: number | string | null;
   st_DIVULGA_BENS?: boolean | null;
+  arquivos?: TSEFile[] | null;
+}
+
+export interface TSEFile {
+  idArquivo?: number | string | null;
+  nome?: string | null;
+  url?: string | null;
+  tipo?: string | null;
+  codTipo?: string | null;
 }
 
 export interface TSEAccountsResponse {
