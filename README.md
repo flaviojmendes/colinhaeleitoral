@@ -1,3 +1,52 @@
+# Colinha Eleitoral
+
+PWA mobile-first para pesquisar candidatos das Eleições Gerais de 2026 e
+imprimir uma lista simples para levar à cabine de votação.
+
+## Rodando localmente
+
+```bash
+npm install
+npm run dev
+```
+
+Abra [http://localhost:3000](http://localhost:3000).
+
+O app consulta a API pública DivulgaCandContas do TSE através de um BFF em
+`/api/candidatos`. O cache em memória é usado localmente quando o Vercel KV não
+está configurado.
+
+## Variáveis de ambiente
+
+Copie `.env.example` para `.env.local` se precisar configurar um endpoint
+alternativo ou o Redis da Vercel:
+
+- `TSE_BASE_URL`: base da API DivulgaCandContas.
+- `KV_REST_API_URL` e `KV_REST_API_TOKEN`: credenciais do Vercel KV/Upstash.
+
+## Arquitetura
+
+- `lib/tse.ts`: orquestração dos endpoints do TSE, com busca por partido,
+  detalhes/bens e prestação de contas.
+- `app/api/candidatos/route.ts`: BFF com timeout de 8 segundos, cache de
+  primeira chamada por 1 hora e fallback do KV.
+- `store/candidatos-store.ts`: slots da colinha persistidos no navegador com
+  Zustand.
+- `app/colinha/page.tsx`: folha de impressão em alto contraste, sem fotos.
+
+Os endpoints usados são:
+
+```text
+GET /candidatura/listar/2026/{UF}/20322002026/{cargo}/candidatos?partido={n}
+GET /candidatura/buscar/2026/{UF}/20322002026/candidato/{id}
+GET /prestador/consulta/20322002026/2026/{UF}/{cargo}/{partido}/{numero}/{id}
+```
+
+Na interface, o botão “Escolher pela lista de candidatos” usa
+`/api/candidatos?uf={UF}&cargo={cargo}&lista=true`, filtra por nome, número ou
+partido e busca os detalhes completos somente depois da escolha.
+
+Em produção, a função fica preferencialmente na região `gru1` (São Paulo).
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
