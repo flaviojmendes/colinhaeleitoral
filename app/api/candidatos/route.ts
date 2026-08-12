@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { LEGENDA_LENGTH, getCargoConfig, getCargoFromParam } from "@/lib/cargos";
 import { kv } from "@/lib/kv";
+import { getTmntMock, isTmntNumber } from "@/lib/tmnt-mocks";
 import {
   CandidateNotFoundError,
   PartyNotFoundError,
@@ -65,6 +66,23 @@ export async function GET(request: Request) {
   }
 
   const config = getCargoConfig(cargo, uf);
+
+  // O mock é deliberadamente excluído dos modos de listagem: personagens
+  // fictícios só aparecem quando o usuário consulta um número de teste.
+  if (!listMode && !partyListMode && isTmntNumber(numero)) {
+    const mock = getTmntMock(cargo, numero);
+
+    if (!mock) {
+      return jsonError("Candidato mutante não encontrado.", 404);
+    }
+
+    return NextResponse.json(mock.candidato, {
+      headers: {
+        "Cache-Control": "no-store",
+        "X-Data-Source": "tmnt-mock",
+      },
+    });
+  }
 
   if ((partyListMode || legendaMode) && !config.proporcional) {
     return jsonError(

@@ -95,6 +95,19 @@ No cliente, o SWR só dispara a requisição quando a seção é aberta.
 A busca é automática e não há curadoria: a interface diz isso explicitamente,
 porque homônimos e matérias fora de contexto podem aparecer.
 
+## Easter egg e mocks TMNT
+
+O ambiente também possui um mock seguro do Partido Mutante Ninja (PMN), usado
+para exercitar cards, fotos, badges, notícias e processos sem depender de
+APIs externas. Ele só é ativado em consultas pontuais:
+
+- números que começam com `99` na rota de candidato;
+- nomes de personagens TMNT nas rotas de notícias e processos.
+
+As rotas de listagem (`lista=true` e `partidos=true`) nunca incluem os
+personagens fictícios. A origem da resposta mockada é identificada pelo header
+`X-Data-Source: tmnt-mock`, e os protocolos judiciais são falsos.
+
 O botão “Consultar processos judiciais” consulta o TJ e o TRF correspondentes
 à UF selecionada. A busca é feita por nome completo, pode conter homônimos e
 não substitui certidão oficial. A chave do Datajud deve ficar apenas no

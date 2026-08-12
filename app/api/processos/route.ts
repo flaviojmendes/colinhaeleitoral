@@ -5,6 +5,7 @@ import {
   searchJudicialProcesses,
   tribunalsForUf,
 } from "@/lib/datajud";
+import { getTmntMockByName, tmntProcessesResponse } from "@/lib/tmnt-mocks";
 
 export const preferredRegion = "gru1";
 export const runtime = "nodejs";
@@ -30,6 +31,19 @@ export async function GET(request: Request) {
 
   if (tribunalsForUf(uf).length === 0) {
     return jsonError("UF inválida para consulta judicial.", 400);
+  }
+
+  if (getTmntMockByName(nome)) {
+    const mock = tmntProcessesResponse(nome);
+
+    if (mock) {
+      return NextResponse.json(mock, {
+        headers: {
+          "Cache-Control": "no-store",
+          "X-Data-Source": "tmnt-mock",
+        },
+      });
+    }
   }
 
   const controller = new AbortController();

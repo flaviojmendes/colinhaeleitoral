@@ -91,6 +91,8 @@ export interface DataJudTribunalResult {
 
 export interface DataJudResponse {
   nomeConsultado: string;
+  totalProcessos?: number;
+  processos?: ProcessoJudicial[];
   tribunais: DataJudTribunalResult[];
 }
 

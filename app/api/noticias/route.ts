@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { fetchCandidateNews } from "@/lib/noticias";
+import { getTmntMockByName } from "@/lib/tmnt-mocks";
 
 export const preferredRegion = "gru1";
 export const runtime = "nodejs";
@@ -21,6 +22,16 @@ export async function GET(request: Request) {
 
   if (nome.length > 120) {
     return jsonError("O nome informado é muito longo.", 400);
+  }
+
+  const tmntMock = getTmntMockByName(nome);
+  if (tmntMock) {
+    return NextResponse.json(tmntMock.noticias, {
+      headers: {
+        "Cache-Control": "no-store",
+        "X-Data-Source": "tmnt-mock",
+      },
+    });
   }
 
   const controller = new AbortController();

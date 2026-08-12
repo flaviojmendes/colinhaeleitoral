@@ -247,7 +247,7 @@ export function CandidateCard({
           </div>
         </dl>
 
-        <div className="relative flex h-32 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border-2 border-screen-line bg-white text-2xl font-bold text-muted">
+        <div className="relative flex h-32 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border-2 border-screen-line bg-screen p-1 text-2xl font-bold text-muted">
           {candidato.fotoUrl && !imageFailed ? (
             <Image
               key={candidato.fotoUrl}
@@ -255,7 +255,7 @@ export function CandidateCard({
               alt={`Foto de ${candidato.nomeUrna}`}
               fill
               sizes="96px"
-              className="object-cover"
+              className="object-contain"
               onError={() => setImageFailed(true)}
             />
           ) : (
