@@ -1,6 +1,7 @@
 "use client";
 
 import { CircleHelp, ExternalLink, Info, Printer, RotateCcw } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Toaster, toast } from "sonner";
@@ -118,9 +119,14 @@ export function ColinhaBuilder() {
               className="flex items-center gap-3 rounded-lg"
               aria-label="Início"
             >
-              <span className="flex h-9 w-9 items-center justify-center rounded-md bg-screen font-mono text-sm font-bold text-ink">
-                CE
-              </span>
+              <Image
+                src="/icon.svg"
+                alt=""
+                width={36}
+                height={36}
+                className="h-9 w-9 rounded-md"
+                aria-hidden="true"
+              />
               <span>
                 <span className="block text-sm font-bold tracking-tight text-console-ink">
                   Colinha Eleitoral
