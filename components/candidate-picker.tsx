@@ -228,7 +228,7 @@ export function CandidatePicker({
     ? `${filteredItems.length} partido${filteredItems.length === 1 ? "" : "s"}`
     : `${filteredItems.length} candidato${
         filteredItems.length === 1 ? "" : "s"
-      } encontrado${filteredItems.length === 1 ? "" : "s"}`;
+      }`;
 
   return (
     <div
@@ -250,55 +250,56 @@ export function CandidatePicker({
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl bg-screen">
           <div className="flex items-start justify-between gap-4 border-b border-screen-line px-4 py-4 sm:px-5">
             <div className="min-w-0">
-              <p className="flex items-center gap-2 font-mono text-[10px] tracking-widest text-muted">
-                <Users size={14} aria-hidden="true" />
-                {isLegenda ? "VOTO DE LEGENDA" : "ESCOLHA PELA LISTA"}
+              <p className="flex items-center gap-2 text-sm font-semibold text-muted">
+                <Users size={16} aria-hidden="true" />
+                {isLegenda ? "Escolher partido" : "Escolher pela lista"}
               </p>
               <h2
                 id="candidate-picker-title"
-                className="mt-1.5 truncate text-xl font-black tracking-tight"
+                className="mt-1.5 truncate text-2xl font-black tracking-tight"
               >
                 {previewCandidate
                   ? isLegenda
-                    ? "Detalhes do partido"
-                    : "Detalhes do candidato"
+                    ? "Confira o partido"
+                    : "Confira o candidato"
                   : isLegenda
                     ? `Partidos · ${config.label}`
                     : config.label}
               </h2>
-              <p className="mt-1 text-xs text-muted">
+              <p className="mt-1 text-sm text-muted">
                 {previewLoading
-                  ? "Carregando os dados financeiros…"
+                  ? "Carregando os dados…"
                   : previewCandidate
-                    ? "Prestação de contas publicada pelo TSE"
+                    ? "Leia com calma e toque em salvar se for a sua escolha."
                     : loading
-                      ? "Carregando dados do TSE…"
+                      ? "Carregando a lista…"
                       : countLabel}
               </p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              aria-label={
-                isLegenda ? "Fechar lista de partidos" : "Fechar lista de candidatos"
-              }
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border-2 border-ink/15 text-muted transition-colors duration-150 hover:border-ink/40 hover:text-ink"
+              aria-label="Fechar"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-ink/15 text-muted transition-colors duration-150 hover:border-ink/40 hover:text-ink"
             >
-              <X size={19} aria-hidden="true" />
+              <X size={22} aria-hidden="true" />
             </button>
           </div>
 
           {!previewCandidate && !previewLoading && !previewError ? (
-            <div className="border-b border-screen-line px-4 py-3 sm:px-5">
-              <label htmlFor="candidate-list-search" className="sr-only">
+            <div className="border-b border-screen-line px-4 py-4 sm:px-5">
+              <label
+                htmlFor="candidate-list-search"
+                className="mb-2 block text-sm font-bold text-ink"
+              >
                 {isLegenda
-                  ? "Buscar partido por nome ou número"
-                  : "Buscar candidato por nome, número ou partido"}
+                  ? "Buscar partido"
+                  : "Buscar pelo nome, número ou partido"}
               </label>
               <div className="relative">
                 <Search
                   className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted"
-                  size={18}
+                  size={20}
                   aria-hidden="true"
                 />
                 <input
@@ -308,19 +309,19 @@ export function CandidatePicker({
                   onChange={(event) => handleSearch(event.target.value)}
                   placeholder={
                     isLegenda
-                      ? "Buscar por sigla, nome ou número"
-                      : "Buscar por nome, número ou partido"
+                      ? "Ex.: PT, 13, Partido…"
+                      : "Ex.: Maria, 1234, partido…"
                   }
-                  className="h-12 w-full rounded-lg border-2 border-screen-line bg-white px-11 pr-11 text-sm font-medium text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+                  className="h-14 w-full rounded-xl border-2 border-screen-line bg-white px-12 pr-12 text-base font-medium text-ink placeholder:text-muted focus:border-accent focus:outline-none"
                 />
                 {search ? (
                   <button
                     type="button"
                     onClick={() => handleSearch("")}
                     aria-label="Limpar busca"
-                    className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted hover:bg-screen hover:text-ink"
+                    className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-muted hover:bg-screen hover:text-ink"
                   >
-                    <X size={15} aria-hidden="true" />
+                    <X size={18} aria-hidden="true" />
                   </button>
                 ) : null}
               </div>
@@ -329,43 +330,38 @@ export function CandidatePicker({
 
           <div className="min-h-0 flex-1 overflow-y-auto">
             {previewLoading ? (
-              <div className="flex min-h-48 items-center justify-center gap-3 text-sm font-semibold text-muted">
-                <LoaderCircle className="animate-spin" size={20} aria-hidden="true" />
-                Carregando dados financeiros…
+              <div className="flex min-h-48 items-center justify-center gap-3 text-base font-semibold text-muted">
+                <LoaderCircle className="animate-spin" size={22} aria-hidden="true" />
+                Carregando…
               </div>
             ) : previewError ? (
               <div className="flex min-h-48 flex-col items-center justify-center px-5 text-center">
                 <p
                   role="alert"
-                  className="text-sm font-semibold leading-6 text-coral-ink"
+                  className="text-base font-semibold leading-7 text-coral-ink"
                 >
                   {previewError}
                 </p>
                 <button
                   type="button"
                   onClick={returnToList}
-                  className="mt-5 inline-flex h-11 items-center gap-2 rounded-lg border-2 border-ink/15 px-4 text-sm font-bold text-ink transition-colors duration-150 hover:border-ink/40"
+                  className="mt-5 inline-flex h-12 items-center gap-2 rounded-xl border-2 border-ink/15 px-5 text-base font-bold text-ink transition-colors duration-150 hover:border-ink/40"
                 >
-                  <ArrowLeft size={16} aria-hidden="true" />
+                  <ArrowLeft size={18} aria-hidden="true" />
                   Voltar à lista
                 </button>
               </div>
             ) : previewCandidate ? (
               <div>
-                <div className="border-b border-screen-line px-4 py-3 sm:px-5">
+                <div className="border-b border-screen-line px-4 py-4 sm:px-5">
                   <button
                     type="button"
                     onClick={returnToList}
-                    className="inline-flex h-10 items-center gap-2 rounded-md pr-2 text-xs font-bold text-muted transition-colors duration-150 hover:text-ink"
+                    className="inline-flex h-12 items-center gap-2 rounded-lg pr-2 text-base font-bold text-muted transition-colors duration-150 hover:text-ink"
                   >
-                    <ArrowLeft size={15} aria-hidden="true" />
+                    <ArrowLeft size={18} aria-hidden="true" />
                     Voltar à lista
                   </button>
-                  <p className="text-xs leading-5 text-muted">
-                    {isLegenda
-                      ? "Confira o partido antes de adicionar à sua colinha."
-                      : "Confira os dados antes de confirmar este candidato."}
-                  </p>
                 </div>
                 <CandidateCard
                   candidato={previewCandidate}
@@ -375,30 +371,30 @@ export function CandidatePicker({
                     onClose();
                   }}
                   onClear={returnToList}
-                  clearLabel="Voltar à lista"
+                  clearLabel="Voltar"
                 />
               </div>
             ) : loading ? (
-              <div className="flex min-h-48 items-center justify-center gap-3 text-sm font-semibold text-muted">
-                <LoaderCircle className="animate-spin" size={20} aria-hidden="true" />
-                {isLegenda ? "Consultando partidos…" : "Consultando candidatos…"}
+              <div className="flex min-h-48 items-center justify-center gap-3 text-base font-semibold text-muted">
+                <LoaderCircle className="animate-spin" size={22} aria-hidden="true" />
+                {isLegenda ? "Buscando partidos…" : "Buscando candidatos…"}
               </div>
             ) : error ? (
               <div
                 role="alert"
-                className="flex min-h-48 items-center justify-center px-5 text-center text-sm font-semibold leading-6 text-coral-ink"
+                className="flex min-h-48 items-center justify-center px-5 text-center text-base font-semibold leading-7 text-coral-ink"
               >
                 {error}
               </div>
             ) : visibleItems.length === 0 ? (
               <div className="flex min-h-48 flex-col items-center justify-center px-5 text-center">
-                <Search className="text-line" size={28} aria-hidden="true" />
-                <p className="mt-3 text-sm font-bold text-ink">
+                <Search className="text-line" size={32} aria-hidden="true" />
+                <p className="mt-3 text-lg font-bold text-ink">
                   {isLegenda
                     ? "Nenhum partido encontrado"
                     : "Nenhum candidato encontrado"}
                 </p>
-                <p className="mt-1 text-xs text-muted">
+                <p className="mt-2 text-base text-muted">
                   Tente outro nome ou número.
                 </p>
               </div>
@@ -417,22 +413,22 @@ export function CandidatePicker({
                       <button
                         type="button"
                         onClick={() => void handlePreview(item)}
-                        className="flex min-h-17 w-full items-center gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-white focus:bg-white sm:px-5"
+                        className="flex min-h-16 w-full items-center gap-3 px-4 py-4 text-left transition-colors duration-150 hover:bg-white focus:bg-white sm:px-5"
                       >
-                        <span className="flex h-11 min-w-14.5 items-center justify-center rounded-md border-2 border-screen-line bg-white px-2 font-mono text-sm font-bold tracking-wider text-ink">
+                        <span className="flex h-12 min-w-16 items-center justify-center rounded-xl border-2 border-screen-line bg-white px-2 font-mono text-base font-bold tracking-wider text-ink">
                           {item.numero}
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-bold text-ink">
+                          <span className="block truncate text-base font-bold text-ink">
                             {item.titulo}
                           </span>
-                          <span className="mt-0.5 block truncate text-xs text-muted">
+                          <span className="mt-1 block truncate text-sm text-muted">
                             {item.subtitulo}
                           </span>
                         </span>
                         <ChevronRight
                           className="shrink-0 text-muted"
-                          size={18}
+                          size={20}
                           aria-hidden="true"
                         />
                       </button>
@@ -445,7 +441,7 @@ export function CandidatePicker({
                     <button
                       type="button"
                       onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
-                      className="flex h-11 w-full items-center justify-center rounded-lg border-2 border-ink/15 px-5 text-xs font-bold text-ink transition-colors duration-150 hover:border-ink/40"
+                      className="flex h-12 w-full items-center justify-center rounded-xl border-2 border-ink/15 px-5 text-base font-bold text-ink transition-colors duration-150 hover:border-ink/40"
                     >
                       Mostrar mais
                     </button>

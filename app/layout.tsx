@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     template: "%s · Colinha Eleitoral",
   },
   description:
-    "Pesquise candidatos para as Eleições Gerais de 2026 e monte sua colinha para imprimir.",
+    "Escolha candidatos das Eleições 2026 e imprima uma lista simples para levar no dia da votação.",
   applicationName: "Colinha Eleitoral",
   manifest: "/manifest.webmanifest",
   icons: {

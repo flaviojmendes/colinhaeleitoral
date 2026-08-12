@@ -43,3 +43,7 @@ behind ambiguous icons or relying on color alone to communicate status.
 Target WCAG 2.2 AA for interactive surfaces. Maintain visible keyboard focus,
 semantic controls, readable contrast, touch targets of at least 44px, and
 status communication that does not depend on color alone.
+
+Assume many voters only use a phone for calls, WhatsApp, photos, and simple
+browsing. Prefer list-first choice over typing, plain Portuguese over jargon,
+large type, one clear next step, and never auto-trigger print or system dialogs.

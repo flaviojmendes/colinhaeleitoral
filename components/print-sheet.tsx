@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft, Printer, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -46,20 +46,11 @@ export function PrintSheet() {
     [slots],
   );
 
-  useEffect(() => {
-    if (!hydrated || confirmed.length === 0) {
-      return;
-    }
-
-    const printTimer = window.setTimeout(() => window.print(), 350);
-    return () => window.clearTimeout(printTimer);
-  }, [confirmed.length, hydrated]);
-
   if (!hydrated) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-console-deep px-5">
-        <p className="text-sm font-semibold text-console-muted">
-          Preparando sua colinha…
+        <p className="text-base font-semibold text-console-muted">
+          Preparando sua lista…
         </p>
       </main>
     );
@@ -67,23 +58,41 @@ export function PrintSheet() {
 
   return (
     <main className="print-sheet min-h-screen bg-console-deep print:bg-white print:text-black">
-      <div className="no-print mx-auto flex max-w-2xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
-        <Link
-          href="/"
-          className="inline-flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-bold text-console-muted transition-colors duration-150 hover:text-console-ink"
-        >
-          <ArrowLeft size={17} aria-hidden="true" />
-          Voltar e editar
-        </Link>
-        {confirmed.length > 0 ? (
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="inline-flex h-11 items-center gap-2 rounded-lg bg-white px-4 text-sm font-bold text-ink transition-colors duration-150 hover:bg-screen"
+      <div className="no-print mx-auto max-w-2xl px-5 py-4 sm:px-8">
+        <div className="flex items-center justify-between gap-4">
+          <Link
+            href="/"
+            className="inline-flex h-12 items-center gap-2 rounded-xl px-3 text-base font-bold text-console-muted transition-colors duration-150 hover:text-console-ink"
           >
-            <Printer size={16} aria-hidden="true" />
-            Imprimir novamente
-          </button>
+            <ArrowLeft size={18} aria-hidden="true" />
+            Voltar
+          </Link>
+          {confirmed.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="inline-flex h-12 items-center gap-2 rounded-xl bg-white px-5 text-base font-bold text-ink transition-colors duration-150 hover:bg-screen"
+            >
+              <Printer size={18} aria-hidden="true" />
+              Imprimir
+            </button>
+          ) : null}
+        </div>
+
+        {confirmed.length > 0 ? (
+          <div className="mt-4 rounded-2xl border border-console-edge bg-console px-4 py-4 text-console-ink">
+            <p className="flex items-start gap-3 text-base leading-6">
+              <Smartphone
+                className="mt-0.5 shrink-0 text-coral"
+                size={20}
+                aria-hidden="true"
+              />
+              <span>
+                Toque em <strong>Imprimir</strong>. Se não tiver impressora,
+                tire uma foto desta tela ou anote os números no papel.
+              </span>
+            </p>
+          </div>
         ) : null}
       </div>
 
@@ -91,76 +100,85 @@ export function PrintSheet() {
         {confirmed.length > 0 ? (
           <>
             <header className="border-b-2 border-ink pb-5 print:border-black">
-              <p className="font-mono text-[10px] tracking-widest">
-                ELEIÇÕES GERAIS · 2026
-              </p>
+              <p className="text-sm font-semibold">Eleições Gerais · 2026</p>
               <h1 className="mt-2 text-4xl font-black tracking-tight print:text-4xl">
-                Minha colinha de votação
+                Minha lista de votos
               </h1>
-              <p className="mt-3 text-sm font-semibold">
+              <p className="mt-3 text-base font-semibold">
                 {uf} · 4 de outubro de 2026
               </p>
             </header>
 
             <section className="mt-7">
-              <div className="mb-3 flex items-center justify-between font-mono text-[10px] tracking-widest">
-                <span>CARGO E NOME</span>
-                <span>NÚMERO</span>
+              <div className="mb-3 flex items-center justify-between text-sm font-semibold">
+                <span>Cargo e nome</span>
+                <span>Número</span>
               </div>
               <div className="divide-y-2 divide-ink border-y-2 border-ink print:divide-black print:border-black">
                 {confirmed.map(({ cargo, candidato }) => {
                   const isLegenda = candidato.tipoVoto === "legenda";
-                  const cargoLabel = (
+                  const cargoLabel =
                     cargo.slug === "deputado-estadual" && uf === "DF"
                       ? "Deputado Distrital"
-                      : cargo.label
-                  ).toLocaleUpperCase("pt-BR");
+                      : cargo.label;
 
                   return (
-                  <div
-                    key={cargo.slug}
-                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-5 py-5 print:py-4"
-                  >
-                    <div>
-                      <p className="font-mono text-[10px] tracking-widest">
-                        {isLegenda
-                          ? `${cargoLabel} · VOTO DE LEGENDA`
-                          : cargoLabel}
-                      </p>
-                      <p className="mt-1 truncate text-lg font-bold sm:text-xl print:text-lg">
-                        {isLegenda ? candidato.partido : candidato.nomeUrna}
-                      </p>
-                      {isLegenda && candidato.nomeUrna !== candidato.partido ? (
-                        <p className="truncate text-sm">
-                          {candidato.nomeUrna}
+                    <div
+                      key={cargo.slug}
+                      className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-5 py-5 print:py-4"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold uppercase tracking-wide">
+                          {isLegenda
+                            ? `${cargoLabel} · voto de legenda`
+                            : cargoLabel}
                         </p>
-                      ) : null}
+                        <p className="mt-1 truncate text-xl font-bold sm:text-2xl print:text-xl">
+                          {isLegenda ? candidato.partido : candidato.nomeUrna}
+                        </p>
+                        {isLegenda &&
+                        candidato.nomeUrna !== candidato.partido ? (
+                          <p className="truncate text-base">
+                            {candidato.nomeUrna}
+                          </p>
+                        ) : null}
+                      </div>
+                      <p className="text-right font-mono text-4xl font-black tracking-[0.08em] sm:text-5xl print:text-4xl">
+                        {candidato.numero}
+                      </p>
                     </div>
-                    <p className="text-right font-mono text-4xl font-black tracking-[0.08em] sm:text-5xl print:text-4xl">
-                      {candidato.numero}
-                    </p>
-                  </div>
                   );
                 })}
               </div>
             </section>
 
-            <footer className="mt-7 font-mono text-[10px] tracking-widest text-muted print:text-black">
-              LEVE ESTE PAPEL · CELULAR NÃO É PERMITIDO NA CABINE
+            <footer className="mt-7 text-sm font-semibold text-muted print:text-black">
+              Leve este papel. Celular não é permitido na cabine.
             </footer>
+
+            <div className="no-print mt-8">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-accent text-base font-bold text-white transition-colors duration-150 hover:bg-accent-deep"
+              >
+                <Printer size={18} aria-hidden="true" />
+                Imprimir minha lista
+              </button>
+            </div>
           </>
         ) : (
           <div className="py-8 text-center">
-            <h1 className="text-2xl font-black tracking-tight">
-              Sua colinha ainda está vazia
+            <h1 className="text-3xl font-black tracking-tight">
+              Sua lista ainda está vazia
             </h1>
-            <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-muted">
-              Volte para a tela principal, pesquise alguns candidatos e
-              confirme suas escolhas antes de imprimir.
+            <p className="mx-auto mt-4 max-w-sm text-base leading-7 text-muted">
+              Volte para a tela principal, escolha alguns candidatos e salve
+              antes de imprimir.
             </p>
             <Link
               href="/"
-              className="mt-6 inline-flex h-12 items-center rounded-lg bg-accent px-5 text-sm font-bold text-white transition-colors duration-150 hover:bg-accent-deep"
+              className="mt-6 inline-flex h-14 items-center rounded-xl bg-accent px-6 text-base font-bold text-white transition-colors duration-150 hover:bg-accent-deep"
             >
               Escolher candidatos
             </Link>

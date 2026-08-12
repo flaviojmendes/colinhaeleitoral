@@ -69,7 +69,11 @@ body {
   background: var(--console-deep);
   color: var(--ink);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
   margin: 0;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 button,

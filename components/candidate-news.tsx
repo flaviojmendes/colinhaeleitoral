@@ -64,11 +64,11 @@ export function CandidateNews({ nome }: CandidateNewsProps) {
         type="button"
         onClick={() => setOpen((current) => !current)}
         aria-expanded={open}
-        className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-white sm:px-5"
+        className="flex min-h-14 w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-white sm:px-5"
       >
         <span className="flex min-w-0 items-center gap-2">
-          <Newspaper className="shrink-0 text-muted" size={17} aria-hidden="true" />
-          <span className="text-xs font-bold text-ink">Notícias recentes</span>
+          <Newspaper className="shrink-0 text-muted" size={18} aria-hidden="true" />
+          <span className="text-base font-bold text-ink">Notícias recentes</span>
         </span>
         {open ? (
           <ChevronUp className="shrink-0 text-muted" size={17} aria-hidden="true" />
@@ -79,9 +79,9 @@ export function CandidateNews({ nome }: CandidateNewsProps) {
 
       {open ? (
         <div className="border-t border-screen-line bg-white">
-          <p className="px-4 py-3 text-[11px] leading-5 text-muted sm:px-5">
-            Busca automática no Google Notícias pelo nome de urna. O app não
-            escolhe nem endossa as matérias.
+          <p className="px-4 py-4 text-sm leading-6 text-muted sm:px-5">
+            Resultados automáticos da internet pelo nome de urna. O app não
+            escolhe nem recomenda essas matérias.
           </p>
 
           {isLoading ? (

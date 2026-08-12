@@ -1,6 +1,6 @@
 "use client";
 
-import { Flag, List } from "lucide-react";
+import { Flag, Keyboard, List } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -27,10 +27,12 @@ export function SlotInput({ cargo, uf, onConfirm }: SlotInputProps) {
   const [legendaLoading, setLegendaLoading] = useState(false);
   const [legendaError, setLegendaError] = useState<string | null>(null);
   const [focused, setFocused] = useState(false);
+  const [showDigits, setShowDigits] = useState(false);
   const [pickerMode, setPickerMode] = useState<TipoVoto | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
   const legendaControllerRef = useRef<AbortController | null>(null);
   const requestedPartyRef = useRef<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const digitCount = config.maxLength;
   const showsLegenda = config.proporcional;
@@ -41,6 +43,12 @@ export function SlotInput({ cargo, uf, onConfirm }: SlotInputProps) {
       legendaControllerRef.current?.abort();
     };
   }, []);
+
+  useEffect(() => {
+    if (showDigits) {
+      inputRef.current?.focus();
+    }
+  }, [showDigits]);
 
   async function searchCandidate(nextNumber: string) {
     controllerRef.current?.abort();
@@ -61,7 +69,7 @@ export function SlotInput({ cargo, uf, onConfirm }: SlotInputProps) {
       if (!response.ok) {
         throw new Error(
           payload.error ??
-            "Não foi possível consultar este número. Tente novamente.",
+            "Não encontramos este número. Confira e tente de novo.",
         );
       }
 
@@ -221,145 +229,166 @@ export function SlotInput({ cargo, uf, onConfirm }: SlotInputProps) {
 
   function hintText() {
     if (loading) {
-      return "Consultando os dados públicos do TSE…";
+      return "Buscando no site do TSE…";
     }
 
     if (number.length === digitCount) {
       return legenda
-        ? "Esse número não é de um candidato, mas você ainda pode confirmar a legenda abaixo."
+        ? "Este número não é de um candidato, mas você ainda pode confirmar o partido abaixo."
         : "";
     }
 
     if (!showsLegenda) {
       return number.length === 0
-        ? `Digite os ${digitCount} dígitos para buscar automaticamente.`
-        : `Faltam ${missingDigits} dígito${missingDigits === 1 ? "" : "s"}.`;
+        ? `Digite os ${digitCount} números da urna.`
+        : `Faltam ${missingDigits} número${missingDigits === 1 ? "" : "s"}.`;
     }
 
     if (number.length === 0) {
-      return `Digite ${LEGENDA_LENGTH} dígitos para ver o partido ou ${digitCount} para buscar um candidato.`;
+      return `Digite ${LEGENDA_LENGTH} números para ver o partido, ou ${digitCount} para ver o candidato.`;
     }
 
     if (number.length < LEGENDA_LENGTH) {
-      return `Falta${missingForParty === 1 ? "" : "m"} ${missingForParty} dígito${
+      return `Falta${missingForParty === 1 ? "" : "m"} ${missingForParty} número${
         missingForParty === 1 ? "" : "s"
       } para ver o partido.`;
     }
 
-    return `Faltam ${missingDigits} dígito${
-      missingDigits === 1 ? "" : "s"
-    } para um candidato, ou confirme a legenda abaixo.`;
+    return `Faltam ${missingDigits} para o candidato, ou confirme o partido abaixo.`;
   }
 
   return (
     <div>
       <div className="p-4 sm:p-5">
-        <div className="flex items-baseline justify-between gap-3">
-          <label
-            htmlFor={`numero-${cargo}`}
-            className="text-xs font-bold text-ink"
-          >
-            Número do candidato
-          </label>
-          <span className="font-mono text-[11px] tracking-widest text-muted">
-            {number.length}/{digitCount}
-          </span>
-        </div>
-
-        <div className="relative mt-2.5">
-          <input
-            id={`numero-${cargo}`}
-            type="text"
-            inputMode="numeric"
-            autoComplete="off"
-            pattern={`\\d{${digitCount}}`}
-            maxLength={digitCount}
-            value={number}
-            onChange={(event) => handleChange(event.target.value)}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
-            className="absolute inset-0 z-10 h-full w-full cursor-text rounded-lg text-transparent caret-transparent opacity-0"
-            aria-describedby={`hint-${cargo}`}
-          />
-          <div className="flex gap-2" aria-hidden="true">
-            {digits.map((digit, index) => {
-              const isActive = focused && index === activeIndex;
-              // Separa visualmente o bloco do partido do resto do número.
-              const closesPartyBlock =
-                showsLegenda && index === LEGENDA_LENGTH - 1;
-
-              return (
-                <span
-                  key={index}
-                  className={`flex h-15 max-w-16 flex-1 items-center justify-center rounded-lg border-2 bg-white font-mono text-2xl font-bold text-ink transition-colors duration-150 ${
-                    isActive ? "border-accent" : "border-screen-line"
-                  } ${closesPartyBlock ? "mr-2 sm:mr-3" : ""}`}
-                >
-                  {digit ||
-                    (isActive ? (
-                      <span className="digit-caret h-7 w-0.5 bg-accent" />
-                    ) : null)}
-                </span>
-              );
-            })}
-          </div>
-          {showsLegenda ? (
-            <p className="mt-2 font-mono text-[10px] tracking-widest text-muted">
-              OS {LEGENDA_LENGTH} PRIMEIROS DÍGITOS SÃO O PARTIDO
-            </p>
-          ) : null}
-        </div>
-
-        <p id={`hint-${cargo}`} className="mt-2 text-xs leading-5 text-muted">
-          {hintText()}
+        <p className="text-base font-bold text-ink">Como você quer escolher?</p>
+        <p className="mt-1 text-sm leading-5 text-muted">
+          A forma mais fácil é procurar pelo nome na lista.
         </p>
 
-        {error ? (
-          <p
-            role="alert"
-            className="mt-3 rounded-lg border-2 border-coral bg-coral/15 px-3 py-2.5 text-xs font-semibold leading-5 text-coral-ink"
-          >
-            {error}
-          </p>
-        ) : null}
-
-        {loading ? (
-          <div className="mt-4">
-            <CandidateSkeleton />
-          </div>
-        ) : null}
-
-        <div className="mt-4 grid gap-2 border-t border-screen-line pt-4 sm:grid-cols-2">
+        <div className="mt-4 space-y-3">
           <button
             type="button"
             onClick={() => setPickerMode("candidato")}
-            className="flex h-12 items-center justify-center gap-2 rounded-lg border-2 border-ink/15 bg-white text-sm font-bold text-ink transition-colors duration-150 hover:border-ink/40"
+            className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-accent text-base font-bold text-white transition-colors duration-150 hover:bg-accent-deep"
           >
-            <List size={17} aria-hidden="true" />
-            Ver candidatos
+            <List size={20} aria-hidden="true" />
+            Procurar pelo nome
           </button>
+
           {showsLegenda ? (
             <button
               type="button"
               onClick={() => setPickerMode("legenda")}
-              className="flex h-12 items-center justify-center gap-2 rounded-lg border-2 border-ink/15 bg-white text-sm font-bold text-ink transition-colors duration-150 hover:border-ink/40"
+              className="flex h-14 w-full items-center justify-center gap-2 rounded-xl border-2 border-ink/15 bg-white text-base font-bold text-ink transition-colors duration-150 hover:border-ink/40"
             >
-              <Flag size={16} aria-hidden="true" />
-              Ver partidos
+              <Flag size={18} aria-hidden="true" />
+              Escolher só o partido
             </button>
           ) : null}
+
+          <button
+            type="button"
+            onClick={() => setShowDigits((current) => !current)}
+            aria-expanded={showDigits}
+            className="flex h-14 w-full items-center justify-center gap-2 rounded-xl border-2 border-ink/15 bg-white text-base font-bold text-ink transition-colors duration-150 hover:border-ink/40"
+          >
+            <Keyboard size={18} aria-hidden="true" />
+            {showDigits ? "Esconder o teclado de números" : "Digitar o número"}
+          </button>
         </div>
+
+        {showDigits ? (
+          <div className="mt-5 border-t border-screen-line pt-5">
+            <div className="flex items-baseline justify-between gap-3">
+              <label
+                htmlFor={`numero-${cargo}`}
+                className="text-base font-bold text-ink"
+              >
+                Número na urna
+              </label>
+              <span className="text-sm font-semibold text-muted">
+                {number.length} de {digitCount}
+              </span>
+            </div>
+
+            <div className="relative mt-3">
+              <input
+                ref={inputRef}
+                id={`numero-${cargo}`}
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                pattern={`\\d{${digitCount}}`}
+                maxLength={digitCount}
+                value={number}
+                onChange={(event) => handleChange(event.target.value)}
+                onFocus={() => setFocused(true)}
+                onBlur={() => setFocused(false)}
+                className="absolute inset-0 z-10 h-full w-full cursor-text rounded-lg text-transparent caret-transparent opacity-0"
+                aria-describedby={`hint-${cargo}`}
+              />
+              <div className="flex gap-2" aria-hidden="true">
+                {digits.map((digit, index) => {
+                  const isActive = focused && index === activeIndex;
+                  const closesPartyBlock =
+                    showsLegenda && index === LEGENDA_LENGTH - 1;
+
+                  return (
+                    <span
+                      key={index}
+                      className={`flex h-16 max-w-16 flex-1 items-center justify-center rounded-xl border-2 bg-white font-mono text-3xl font-bold text-ink transition-colors duration-150 ${
+                        isActive ? "border-accent" : "border-screen-line"
+                      } ${closesPartyBlock ? "mr-2 sm:mr-3" : ""}`}
+                    >
+                      {digit ||
+                        (isActive ? (
+                          <span className="digit-caret h-8 w-0.5 bg-accent" />
+                        ) : null)}
+                    </span>
+                  );
+                })}
+              </div>
+              {showsLegenda ? (
+                <p className="mt-3 text-sm leading-5 text-muted">
+                  Os 2 primeiros números são do partido.
+                </p>
+              ) : null}
+            </div>
+
+            <p
+              id={`hint-${cargo}`}
+              className="mt-3 text-sm leading-5 text-muted"
+            >
+              {hintText()}
+            </p>
+
+            {error ? (
+              <p
+                role="alert"
+                className="mt-3 rounded-xl border-2 border-coral bg-coral/15 px-4 py-3 text-sm font-semibold leading-6 text-coral-ink"
+              >
+                {error}
+              </p>
+            ) : null}
+
+            {loading ? (
+              <div className="mt-4">
+                <CandidateSkeleton />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
-      {legendaLoading ? (
+      {showDigits && legendaLoading ? (
         <div className="border-t-2 border-screen-line p-4 sm:p-5">
           <CandidateSkeleton legenda />
         </div>
-      ) : legendaError && number.length === LEGENDA_LENGTH ? (
-        <p className="border-t-2 border-screen-line px-4 py-4 text-xs leading-5 text-muted sm:px-5">
+      ) : showDigits && legendaError && number.length === LEGENDA_LENGTH ? (
+        <p className="border-t-2 border-screen-line px-4 py-4 text-sm leading-6 text-muted sm:px-5">
           {legendaError}
         </p>
-      ) : legenda ? (
+      ) : showDigits && legenda ? (
         <div className="border-t-2 border-screen-line">
           <CandidateCard
             candidato={legenda}

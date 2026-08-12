@@ -353,12 +353,12 @@ export function JudicialRecords({
         type="button"
         onClick={() => void toggle()}
         aria-expanded={open}
-        className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-white sm:px-5"
+        className="flex min-h-14 w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-white sm:px-5"
       >
         <span className="flex min-w-0 items-center gap-2">
-          <FileSearch className="shrink-0 text-muted" size={17} aria-hidden="true" />
-          <span className="text-xs font-bold text-ink">
-            Consultar processos judiciais
+          <FileSearch className="shrink-0 text-muted" size={18} aria-hidden="true" />
+          <span className="text-base font-bold text-ink">
+            Processos e documentos
           </span>
         </span>
         {open ? (
@@ -370,12 +370,11 @@ export function JudicialRecords({
 
       {open ? (
         <div className="border-t border-screen-line bg-white">
-          <div className="flex items-start gap-2 bg-coral/15 px-4 py-3 text-[11px] leading-5 text-coral-ink sm:px-5">
-            <ShieldAlert className="mt-0.5 shrink-0" size={15} aria-hidden="true" />
+          <div className="flex items-start gap-2 bg-coral/15 px-4 py-4 text-sm leading-6 text-coral-ink sm:px-5">
+            <ShieldAlert className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
             <p>
-              Busca pública por nome nos tribunais da UF. Homônimos podem
-              gerar resultados incorretos; isto não é uma certidão nem prova
-              de culpa.
+              Busca pública pelo nome. Pessoas com o mesmo nome podem aparecer.
+              Isto não é certidão oficial nem prova de culpa.
             </p>
           </div>
 
