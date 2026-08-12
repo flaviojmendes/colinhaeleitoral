@@ -8,8 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
       "Pesquise candidatos e monte sua colinha para imprimir nas Eleições Gerais de 2026.",
     start_url: "/",
     display: "standalone",
-    background_color: "#f5f1e8",
-    theme_color: "#f5f1e8",
+    background_color: "#1c211f",
+    theme_color: "#1c211f",
     lang: "pt-BR",
     icons: [
       {

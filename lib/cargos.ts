@@ -1,5 +1,8 @@
 import type { CargoConfig, CargoSlug, Uf } from "@/lib/types";
 
+/** Número do partido na urna: os dois primeiros dígitos do voto proporcional. */
+export const LEGENDA_LENGTH = 2;
+
 export const CARGOS_2026: readonly CargoConfig[] = [
   {
     slug: "deputado-federal",
@@ -7,6 +10,7 @@ export const CARGOS_2026: readonly CargoConfig[] = [
     shortLabel: "Dep. Federal",
     tseCode: 6,
     maxLength: 4,
+    proporcional: true,
   },
   {
     slug: "deputado-estadual",
@@ -14,6 +18,7 @@ export const CARGOS_2026: readonly CargoConfig[] = [
     shortLabel: "Dep. Estadual",
     tseCode: 7,
     maxLength: 5,
+    proporcional: true,
   },
   {
     slug: "senador-1",
@@ -21,6 +26,7 @@ export const CARGOS_2026: readonly CargoConfig[] = [
     shortLabel: "Senador",
     tseCode: 5,
     maxLength: 3,
+    proporcional: false,
   },
   {
     slug: "senador-2",
@@ -28,6 +34,7 @@ export const CARGOS_2026: readonly CargoConfig[] = [
     shortLabel: "Senador",
     tseCode: 5,
     maxLength: 3,
+    proporcional: false,
   },
   {
     slug: "governador",
@@ -35,6 +42,7 @@ export const CARGOS_2026: readonly CargoConfig[] = [
     shortLabel: "Governador",
     tseCode: 3,
     maxLength: 2,
+    proporcional: false,
   },
   {
     slug: "presidente",
@@ -42,6 +50,7 @@ export const CARGOS_2026: readonly CargoConfig[] = [
     shortLabel: "Presidente",
     tseCode: 1,
     maxLength: 2,
+    proporcional: false,
   },
 ];
 

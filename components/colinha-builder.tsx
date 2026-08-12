@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  ArrowRight,
-  CircleHelp,
-  FileDown,
-  Info,
-  Landmark,
-  RotateCcw,
-} from "lucide-react";
+import { CircleHelp, ExternalLink, Info, Printer, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Toaster, toast } from "sonner";
@@ -67,7 +60,11 @@ export function ColinhaBuilder() {
 
   function handleConfirm(candidate: CandidatoColinha) {
     setCandidate(candidate.cargo, candidate);
-    toast.success(`${candidate.nomeUrna} foi adicionado à sua colinha.`);
+    toast.success(
+      candidate.tipoVoto === "legenda"
+        ? `Legenda ${candidate.partido} foi adicionada à sua colinha.`
+        : `${candidate.nomeUrna} foi adicionado à sua colinha.`,
+    );
   }
 
   async function refreshCandidate(candidate: CandidatoColinha) {
@@ -76,6 +73,10 @@ export function ColinhaBuilder() {
       cargo: candidate.cargo,
       numero: candidate.numero,
     });
+    if (candidate.tipoVoto === "legenda") {
+      query.set("legenda", "true");
+    }
+
     const response = await fetch(`/api/candidatos?${query}`);
     const payload = (await response.json().catch(() => ({}))) as {
       error?: string;
@@ -102,38 +103,43 @@ export function ColinhaBuilder() {
         toastOptions={{
           classNames: {
             toast:
-              "border-line! bg-white! text-ink! shadow-[0_12px_36px_rgba(24,36,31,0.14)]!",
+              "border-console-edge! bg-console! text-console-ink! shadow-lg!",
             title: "text-sm! font-semibold!",
-            description: "text-xs! text-muted!",
+            description: "text-xs! text-console-muted!",
           },
         }}
       />
 
-      <div className="min-h-screen bg-paper">
-        <header className="no-print border-b border-line/80 bg-paper/90 backdrop-blur">
-          <div className="mx-auto flex max-w-6xl items-center justify-between gap-5 px-5 py-4 sm:px-8">
-            <Link href="/" className="flex items-center gap-3" aria-label="Início">
-              <span className="flex h-10 w-10 items-center justify-center rounded-[13px] bg-accent text-sm font-black tracking-[-0.08em] text-white">
+      <div className="min-h-screen bg-console-deep">
+        <header className="no-print sticky top-0 z-20 border-b border-console-edge bg-console-deep/95 backdrop-blur">
+          <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+            <Link
+              href="/"
+              className="flex items-center gap-3 rounded-lg"
+              aria-label="Início"
+            >
+              <span className="flex h-9 w-9 items-center justify-center rounded-md bg-screen font-mono text-sm font-bold text-ink">
                 CE
               </span>
-              <span className="hidden sm:block">
-                <span className="block text-sm font-extrabold tracking-[-0.03em] text-ink">
+              <span>
+                <span className="block text-sm font-bold tracking-tight text-console-ink">
                   Colinha Eleitoral
                 </span>
-                <span className="block text-[10px] font-bold uppercase tracking-[0.17em] text-muted">
-                  Eleições 2026
+                <span className="block font-mono text-[10px] tracking-widest text-console-muted">
+                  ELEIÇÕES 2026
                 </span>
               </span>
             </Link>
-            <div className="flex items-center gap-3">
-              <div className="hidden items-center gap-2 text-xs font-semibold text-muted sm:flex">
-                <CircleHelp size={16} aria-hidden="true" />
-                <span>Feita para o dia da votação</span>
-              </div>
+
+            <div className="flex items-center gap-2">
+              <span className="hidden items-center gap-2 text-xs font-medium text-console-muted md:flex">
+                <CircleHelp size={15} aria-hidden="true" />
+                Prepare antes de ir votar
+              </span>
               <button
                 type="button"
                 onClick={handleReset}
-                className="flex h-10 items-center gap-2 rounded-xl px-3 text-xs font-bold text-muted transition-colors hover:bg-paper-deep hover:text-ink"
+                className="flex h-10 items-center gap-2 rounded-lg border border-console-edge px-3 text-xs font-bold text-console-ink transition-colors duration-150 hover:bg-console"
               >
                 <RotateCcw size={15} aria-hidden="true" />
                 <span className="hidden sm:inline">Recomeçar</span>
@@ -142,127 +148,145 @@ export function ColinhaBuilder() {
           </div>
         </header>
 
-        <main
-          className="paper-grid no-print"
-          aria-busy={!hydrated}
-        >
-          <section className="mx-auto max-w-6xl px-5 pb-10 pt-12 sm:px-8 sm:pb-14 sm:pt-20">
-            <div className="grid gap-10 lg:grid-cols-[1fr_340px] lg:items-end lg:gap-16">
-              <div>
-                <p className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.24em] text-coral">
-                  <span className="h-2 w-2 rounded-full bg-coral" />
-                  Eleições Gerais · 2026
+        <main className="no-print" aria-busy={!hydrated}>
+          <section className="mx-auto max-w-5xl px-4 pt-8 sm:px-6 sm:pt-12">
+            <div className="grid gap-6 lg:grid-cols-[1fr_320px] lg:items-start lg:gap-8">
+              <div className="pt-1">
+                <p className="font-mono text-[11px] tracking-widest text-coral">
+                  ELEIÇÕES GERAIS · 2026
                 </p>
-                <h1 className="display-serif mt-5 max-w-3xl text-[clamp(2.7rem,8vw,5.8rem)] leading-[0.94] tracking-[-0.06em] text-ink">
-                  Monte sua colinha antes do voto.
+                <h1 className="mt-3 max-w-lg text-4xl font-black leading-[1.05] tracking-tight text-console-ink sm:text-5xl">
+                  Ensaie seu voto antes da urna.
                 </h1>
-                <p className="mt-6 max-w-xl text-base leading-7 text-muted sm:text-lg">
-                  Pesquise pelo número, confira os dados públicos do TSE e
-                  leve tudo impresso para a cabine. Sem depender do celular.
+                <p className="mt-4 max-w-md text-sm leading-6 text-console-muted sm:text-base">
+                  Digite o número, confira os dados públicos do TSE na mesma
+                  ordem da votação e leve tudo impresso para a cabine.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-line bg-white/60 p-5 lg:mb-1">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-muted">
-                  Onde você vota?
-                </p>
-                <div className="mt-3 rounded-xl border border-line bg-white px-3 py-2">
+              <div className="rounded-2xl border border-console-edge bg-console p-2.5">
+                <div className="screen-surface rounded-xl p-4">
                   <UfSelect value={uf} onChange={handleUfChange} />
-                </div>
-                <div className="mt-5 flex items-end justify-between">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-muted">
-                      Progresso
-                    </p>
-                    <p className="mt-1 text-2xl font-black tracking-[-0.05em] text-ink">
-                      {confirmedCount}
-                      <span className="text-base font-semibold text-muted">
-                        {" "}
-                        / {CARGOS_2026.length}
-                      </span>
-                    </p>
-                  </div>
-                  {confirmedCount > 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => router.push("/colinha")}
-                      className="flex h-11 items-center gap-2 rounded-xl bg-coral px-4 text-xs font-extrabold text-white transition-transform hover:-translate-y-0.5"
+
+                  <div className="mt-4 border-t border-screen-line pt-4">
+                    <div className="flex items-end justify-between gap-3">
+                      <div>
+                        <p className="font-mono text-[10px] tracking-widest text-muted">
+                          CARGOS PREENCHIDOS
+                        </p>
+                        <p className="mt-1 font-mono text-3xl font-bold leading-none text-ink">
+                          {confirmedCount}
+                          <span className="text-lg text-muted">
+                            /{CARGOS_2026.length}
+                          </span>
+                        </p>
+                      </div>
+                      <p className="max-w-32 text-right text-[11px] leading-4 text-muted">
+                        {confirmedCount > 0
+                          ? "Você já pode imprimir e completar depois."
+                          : "Comece pelo primeiro cargo abaixo."}
+                      </p>
+                    </div>
+
+                    <div
+                      className="mt-3 h-2 overflow-hidden rounded-full bg-screen-deep"
+                      role="progressbar"
+                      aria-valuenow={confirmedCount}
+                      aria-valuemin={0}
+                      aria-valuemax={CARGOS_2026.length}
+                      aria-label="Cargos preenchidos"
                     >
-                      <FileDown size={16} aria-hidden="true" />
-                      Gerar Colinha para Impressão
-                    </button>
-                  ) : (
-                    <span className="text-right text-xs font-semibold leading-5 text-muted">
-                      Adicione ao menos
-                      <br />
-                      um candidato
-                    </span>
-                  )}
+                      <div
+                        className="h-full bg-accent transition-[width] duration-200"
+                        style={{
+                          width: `${
+                            (confirmedCount / CARGOS_2026.length) * 100
+                          }%`,
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="mt-4 h-2 overflow-hidden rounded-full bg-paper-deep">
-                  <div
-                    className="h-full rounded-full bg-accent transition-[width] duration-500"
-                    style={{
-                      width: `${(confirmedCount / CARGOS_2026.length) * 100}%`,
-                    }}
-                  />
-                </div>
+
+                <button
+                  type="button"
+                  onClick={() => router.push("/colinha")}
+                  disabled={confirmedCount === 0}
+                  className="mt-2.5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white text-sm font-bold text-ink transition-colors duration-150 hover:bg-screen disabled:cursor-not-allowed disabled:bg-console-edge disabled:text-console-muted"
+                >
+                  <Printer size={17} aria-hidden="true" />
+                  Gerar colinha para impressão
+                </button>
               </div>
             </div>
           </section>
 
-          <section
-            id="cargos"
-            className="mx-auto max-w-6xl px-5 pb-20 sm:px-8"
-          >
-            <div className="mb-6 flex items-end justify-between gap-5 border-b border-line pb-4">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-accent">
-                  Sua seleção
-                </p>
-                <h2 className="mt-1 text-2xl font-black tracking-[-0.05em] text-ink sm:text-3xl">
-                  Ordem de votação
-                </h2>
-              </div>
-              <p className="hidden max-w-[210px] text-right text-xs leading-5 text-muted sm:block">
-                A ordem segue exatamente a sequência da urna eletrônica.
+          <section id="cargos" className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+            <div className="mb-5 flex items-end justify-between gap-4">
+              <h2 className="text-lg font-bold tracking-tight text-console-ink">
+                Sequência de votação
+              </h2>
+              <p className="font-mono text-[10px] tracking-widest text-console-muted">
+                {CARGOS_2026.length} CARGOS
               </p>
             </div>
 
-            <div className="divide-y divide-line/80">
+            <div className="space-y-4">
               {CARGOS_2026.map((cargo, index) => {
                 const candidate = slots[cargo.slug];
+                const cargoLabel =
+                  cargo.slug === "deputado-estadual" && uf === "DF"
+                    ? "Deputado Distrital"
+                    : cargo.label;
 
                 return (
                   <article
                     key={cargo.slug}
-                    className="grid gap-4 py-6 sm:grid-cols-[74px_220px_1fr] sm:gap-7 sm:py-8"
+                    className="rounded-2xl border border-console-edge bg-console p-2.5 sm:p-3"
                   >
-                    <div className="flex items-start gap-3 sm:block">
-                      <span className="display-serif text-4xl leading-none text-coral sm:text-5xl">
-                        {String(index + 1).padStart(2, "0")}
+                    <div className="flex items-center justify-between gap-3 px-1.5 pb-2.5">
+                      <span className="font-mono text-[10px] tracking-widest text-console-muted">
+                        PASSO {String(index + 1).padStart(2, "0")} DE{" "}
+                        {CARGOS_2026.length}
                       </span>
-                      <div className="pt-1 sm:mt-4 sm:pt-0">
-                        <Landmark
-                          className="hidden text-muted/50 sm:block"
-                          size={18}
+                      <span className="flex items-center gap-1.5 font-mono text-[10px] tracking-widest">
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            candidate ? "bg-accent-bright" : "bg-console-muted"
+                          }`}
                           aria-hidden="true"
                         />
-                      </div>
+                        <span
+                          className={
+                            candidate
+                              ? "text-accent-bright"
+                              : "text-console-muted"
+                          }
+                        >
+                          {candidate ? "CONFIRMADO" : "AGUARDANDO"}
+                        </span>
+                      </span>
                     </div>
-                    <div className="sm:pt-1">
-                      <h3 className="text-lg font-extrabold tracking-[-0.035em] text-ink">
-                        {cargo.slug === "deputado-estadual" && uf === "DF"
-                          ? "Deputado Distrital"
-                          : cargo.label}
-                      </h3>
-                      <p className="mt-1 text-xs leading-5 text-muted">
-                        {cargo.slug.startsWith("senador")
-                          ? "Duas vagas em disputa este ano."
-                          : `Número com ${cargo.maxLength} dígitos.`}
-                      </p>
-                    </div>
-                    <div className="min-w-0">
+
+                    <div className="screen-surface overflow-hidden rounded-xl">
+                      <header className="border-b border-screen-line px-4 py-3 sm:px-5">
+                        <p className="font-mono text-[10px] tracking-widest text-muted">
+                          SEU VOTO PARA
+                        </p>
+                        <h3 className="mt-1 text-xl font-black tracking-tight text-ink sm:text-2xl">
+                          {cargoLabel}
+                        </h3>
+                        <p className="mt-1 text-xs text-muted">
+                          {candidate?.tipoVoto === "legenda"
+                            ? "Voto de legenda no partido"
+                            : cargo.proporcional
+                              ? `Número de ${cargo.maxLength} dígitos · aceita voto de legenda`
+                              : cargo.slug.startsWith("senador")
+                                ? `Duas vagas neste ano · número de ${cargo.maxLength} dígitos`
+                                : `Número de ${cargo.maxLength} dígitos`}
+                        </p>
+                      </header>
+
                       {candidate ? (
                         <CandidateCard
                           candidato={candidate}
@@ -285,29 +309,28 @@ export function ColinhaBuilder() {
               })}
             </div>
 
-            <div className="mt-4 flex items-start gap-3 rounded-2xl border border-accent/15 bg-accent/5 p-4 text-xs leading-5 text-accent-deep">
-              <Info className="mt-0.5 shrink-0" size={17} aria-hidden="true" />
+            <div className="mt-6 flex items-start gap-3 rounded-xl border border-console-edge px-4 py-3.5 text-xs leading-5 text-console-muted">
+              <Info className="mt-0.5 shrink-0" size={16} aria-hidden="true" />
               <p>
-                Os dados são públicos e podem mudar até a eleição. Confirme
-                sempre a situação do candidato no site oficial do TSE.
+                Aplicativo independente, sem vínculo com o TSE. Os dados são
+                públicos e podem mudar até a eleição, então confirme a situação
+                do candidato antes de votar.
               </p>
             </div>
           </section>
         </main>
 
-        <footer className="no-print border-t border-line bg-paper-deep/40">
-          <div className="mx-auto flex max-w-6xl flex-col gap-3 px-5 py-7 text-xs text-muted sm:flex-row sm:items-center sm:justify-between sm:px-8">
-            <p className="font-semibold">
-              Colinha Eleitoral · Um lembrete no papel, uma escolha consciente.
-            </p>
+        <footer className="no-print border-t border-console-edge">
+          <div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-6 text-xs text-console-muted sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <p>Colinha Eleitoral · um lembrete no papel para o dia da votação</p>
             <a
               href="https://divulgacandcontas.tse.jus.br/"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 font-bold text-accent hover:text-accent-deep"
+              className="inline-flex items-center gap-1.5 font-bold text-console-ink hover:text-white"
             >
-              Fonte: TSE
-              <ArrowRight size={14} aria-hidden="true" />
+              Consultar fonte oficial do TSE
+              <ExternalLink size={13} aria-hidden="true" />
             </a>
           </div>
         </footer>

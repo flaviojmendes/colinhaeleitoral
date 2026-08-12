@@ -1,11 +1,11 @@
 "use client";
 
-import { List, Search } from "lucide-react";
+import { Flag, List } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { getCargoConfig } from "@/lib/cargos";
-import type { CargoSlug, CandidatoColinha } from "@/lib/types";
+import { LEGENDA_LENGTH, getCargoConfig } from "@/lib/cargos";
+import type { CargoSlug, CandidatoColinha, TipoVoto } from "@/lib/types";
 
 import { CandidateCard } from "./candidate-card";
 import { CandidatePicker } from "./candidate-picker";
@@ -23,11 +23,23 @@ export function SlotInput({ cargo, uf, onConfirm }: SlotInputProps) {
   const [candidate, setCandidate] = useState<CandidatoColinha | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [legenda, setLegenda] = useState<CandidatoColinha | null>(null);
+  const [legendaLoading, setLegendaLoading] = useState(false);
+  const [legendaError, setLegendaError] = useState<string | null>(null);
+  const [focused, setFocused] = useState(false);
+  const [pickerMode, setPickerMode] = useState<TipoVoto | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
+  const legendaControllerRef = useRef<AbortController | null>(null);
+  const requestedPartyRef = useRef<string | null>(null);
+
+  const digitCount = config.maxLength;
+  const showsLegenda = config.proporcional;
 
   useEffect(() => {
-    return () => controllerRef.current?.abort();
+    return () => {
+      controllerRef.current?.abort();
+      legendaControllerRef.current?.abort();
+    };
   }, []);
 
   async function searchCandidate(nextNumber: string) {
@@ -38,11 +50,7 @@ export function SlotInput({ cargo, uf, onConfirm }: SlotInputProps) {
     setError(null);
 
     try {
-      const query = new URLSearchParams({
-        uf,
-        cargo,
-        numero: nextNumber,
-      });
+      const query = new URLSearchParams({ uf, cargo, numero: nextNumber });
       const response = await fetch(`/api/candidatos?${query}`, {
         signal: controller.signal,
       });
@@ -77,17 +85,93 @@ export function SlotInput({ cargo, uf, onConfirm }: SlotInputProps) {
     }
   }
 
+  /**
+   * O partido aparece assim que os dois primeiros dígitos são digitados, do
+   * mesmo modo que a urna. Um número inexistente não vira erro barulhento:
+   * o eleitor provavelmente está a caminho do número completo do candidato.
+   */
+  async function searchParty(partyNumber: string) {
+    legendaControllerRef.current?.abort();
+    const controller = new AbortController();
+    legendaControllerRef.current = controller;
+    requestedPartyRef.current = partyNumber;
+    setLegendaLoading(true);
+    setLegendaError(null);
+    setLegenda(null);
+
+    try {
+      const query = new URLSearchParams({
+        uf,
+        cargo,
+        numero: partyNumber,
+        legenda: "true",
+      });
+      const response = await fetch(`/api/candidatos?${query}`, {
+        signal: controller.signal,
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+      } & Partial<CandidatoColinha>;
+
+      if (!response.ok) {
+        throw new Error(
+          payload.error ?? "Nenhum partido com esse número disputa este cargo.",
+        );
+      }
+
+      setLegenda(payload as CandidatoColinha);
+    } catch (requestError) {
+      if (requestError instanceof Error && requestError.name === "AbortError") {
+        return;
+      }
+
+      setLegenda(null);
+      setLegendaError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Não foi possível consultar este partido.",
+      );
+    } finally {
+      if (!controller.signal.aborted) {
+        setLegendaLoading(false);
+      }
+    }
+  }
+
+  function clearParty() {
+    legendaControllerRef.current?.abort();
+    requestedPartyRef.current = null;
+    setLegenda(null);
+    setLegendaError(null);
+    setLegendaLoading(false);
+  }
+
   function handleChange(value: string) {
-    const digitsOnly = value.replace(/\D/g, "").slice(0, config.maxLength);
+    const digitsOnly = value.replace(/\D/g, "").slice(0, digitCount);
     setNumber(digitsOnly);
     setCandidate(null);
     setError(null);
 
-    if (digitsOnly.length === config.maxLength) {
+    if (digitsOnly.length === digitCount) {
       void searchCandidate(digitsOnly);
     } else {
       controllerRef.current?.abort();
       setLoading(false);
+    }
+
+    if (!showsLegenda) {
+      return;
+    }
+
+    const partyNumber = digitsOnly.slice(0, LEGENDA_LENGTH);
+
+    if (partyNumber.length < LEGENDA_LENGTH) {
+      clearParty();
+      return;
+    }
+
+    if (partyNumber !== requestedPartyRef.current) {
+      void searchParty(partyNumber);
     }
   }
 
@@ -97,86 +181,196 @@ export function SlotInput({ cargo, uf, onConfirm }: SlotInputProps) {
     setCandidate(null);
     setError(null);
     setLoading(false);
+    clearParty();
   }
 
-  return (
-    <div>
-      {!candidate ? (
-        <>
-          <label
-            htmlFor={`numero-${cargo}`}
-            className="flex items-center justify-between gap-3"
-          >
-            <span className="text-xs font-bold uppercase tracking-[0.12em] text-muted">
-              Número do candidato
-            </span>
-            <span className="text-[11px] font-semibold text-muted">
-              {number.length}/{config.maxLength}
-            </span>
-          </label>
-          <div className="relative mt-2">
-            <input
-              id={`numero-${cargo}`}
-              type="text"
-              inputMode="numeric"
-              autoComplete="off"
-              pattern={`\\d{${config.maxLength}}`}
-              maxLength={config.maxLength}
-              placeholder={"0".repeat(config.maxLength)}
-              value={number}
-              onChange={(event) => handleChange(event.target.value)}
-              className="h-14 w-full rounded-xl border border-line bg-white px-4 pr-12 text-xl font-bold tracking-[0.28em] text-ink placeholder:text-line focus:border-accent focus:outline-none focus:ring-4 focus:ring-accent/10"
-              aria-describedby={`hint-${cargo}`}
-            />
-            <Search
-              className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-muted"
-              size={20}
-              aria-hidden="true"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={() => setPickerOpen(true)}
-            className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-accent/25 bg-accent/5 text-sm font-bold text-accent transition-colors hover:border-accent hover:bg-accent/10"
-          >
-            <List size={17} aria-hidden="true" />
-            Escolher pela lista de candidatos
-          </button>
-          <p id={`hint-${cargo}`} className="mt-2 text-xs text-muted">
-            {number.length === 0
-              ? `Digite os ${config.maxLength} dígitos para buscar automaticamente.`
-              : number.length < config.maxLength
-                ? `Faltam ${config.maxLength - number.length} dígito${
-                    config.maxLength - number.length === 1 ? "" : "s"
-                  }.`
-                : "Consultando dados públicos do TSE…"}
-          </p>
-          {error ? (
-            <p className="mt-3 rounded-xl bg-red-50 px-3 py-2.5 text-xs font-medium leading-5 text-red-800">
-              {error}
-            </p>
-          ) : null}
-          {loading ? <CandidateSkeleton /> : null}
-        </>
-      ) : (
+  const picker = pickerMode ? (
+    <CandidatePicker
+      cargo={cargo}
+      uf={uf}
+      modo={pickerMode}
+      onConfirm={(selectedCandidate) => {
+        setPickerMode(null);
+        onConfirm(selectedCandidate);
+      }}
+      onClose={() => setPickerMode(null)}
+    />
+  ) : null;
+
+  if (candidate) {
+    return (
+      <>
         <CandidateCard
           candidato={candidate}
           uf={uf}
           onConfirm={() => onConfirm(candidate)}
           onClear={clearSlot}
         />
-      )}
-      {pickerOpen ? (
-        <CandidatePicker
-          cargo={cargo}
-          uf={uf}
-          onConfirm={(selectedCandidate) => {
-            setPickerOpen(false);
-            onConfirm(selectedCandidate);
-          }}
-          onClose={() => setPickerOpen(false)}
-        />
+        {picker}
+      </>
+    );
+  }
+
+  const digits = Array.from(
+    { length: digitCount },
+    (_, index) => number[index] ?? "",
+  );
+  const activeIndex = Math.min(number.length, digitCount - 1);
+  const missingDigits = digitCount - number.length;
+  const missingForParty = LEGENDA_LENGTH - number.length;
+
+  function hintText() {
+    if (loading) {
+      return "Consultando os dados públicos do TSE…";
+    }
+
+    if (number.length === digitCount) {
+      return legenda
+        ? "Esse número não é de um candidato, mas você ainda pode confirmar a legenda abaixo."
+        : "";
+    }
+
+    if (!showsLegenda) {
+      return number.length === 0
+        ? `Digite os ${digitCount} dígitos para buscar automaticamente.`
+        : `Faltam ${missingDigits} dígito${missingDigits === 1 ? "" : "s"}.`;
+    }
+
+    if (number.length === 0) {
+      return `Digite ${LEGENDA_LENGTH} dígitos para ver o partido ou ${digitCount} para buscar um candidato.`;
+    }
+
+    if (number.length < LEGENDA_LENGTH) {
+      return `Falta${missingForParty === 1 ? "" : "m"} ${missingForParty} dígito${
+        missingForParty === 1 ? "" : "s"
+      } para ver o partido.`;
+    }
+
+    return `Faltam ${missingDigits} dígito${
+      missingDigits === 1 ? "" : "s"
+    } para um candidato, ou confirme a legenda abaixo.`;
+  }
+
+  return (
+    <div>
+      <div className="p-4 sm:p-5">
+        <div className="flex items-baseline justify-between gap-3">
+          <label
+            htmlFor={`numero-${cargo}`}
+            className="text-xs font-bold text-ink"
+          >
+            Número do candidato
+          </label>
+          <span className="font-mono text-[11px] tracking-widest text-muted">
+            {number.length}/{digitCount}
+          </span>
+        </div>
+
+        <div className="relative mt-2.5">
+          <input
+            id={`numero-${cargo}`}
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            pattern={`\\d{${digitCount}}`}
+            maxLength={digitCount}
+            value={number}
+            onChange={(event) => handleChange(event.target.value)}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            className="absolute inset-0 z-10 h-full w-full cursor-text rounded-lg text-transparent caret-transparent opacity-0"
+            aria-describedby={`hint-${cargo}`}
+          />
+          <div className="flex gap-2" aria-hidden="true">
+            {digits.map((digit, index) => {
+              const isActive = focused && index === activeIndex;
+              // Separa visualmente o bloco do partido do resto do número.
+              const closesPartyBlock =
+                showsLegenda && index === LEGENDA_LENGTH - 1;
+
+              return (
+                <span
+                  key={index}
+                  className={`flex h-15 max-w-16 flex-1 items-center justify-center rounded-lg border-2 bg-white font-mono text-2xl font-bold text-ink transition-colors duration-150 ${
+                    isActive ? "border-accent" : "border-screen-line"
+                  } ${closesPartyBlock ? "mr-2 sm:mr-3" : ""}`}
+                >
+                  {digit ||
+                    (isActive ? (
+                      <span className="digit-caret h-7 w-0.5 bg-accent" />
+                    ) : null)}
+                </span>
+              );
+            })}
+          </div>
+          {showsLegenda ? (
+            <p className="mt-2 font-mono text-[10px] tracking-widest text-muted">
+              OS {LEGENDA_LENGTH} PRIMEIROS DÍGITOS SÃO O PARTIDO
+            </p>
+          ) : null}
+        </div>
+
+        <p id={`hint-${cargo}`} className="mt-2 text-xs leading-5 text-muted">
+          {hintText()}
+        </p>
+
+        {error ? (
+          <p
+            role="alert"
+            className="mt-3 rounded-lg border-2 border-coral bg-coral/15 px-3 py-2.5 text-xs font-semibold leading-5 text-coral-ink"
+          >
+            {error}
+          </p>
+        ) : null}
+
+        {loading ? (
+          <div className="mt-4">
+            <CandidateSkeleton />
+          </div>
+        ) : null}
+
+        <div className="mt-4 grid gap-2 border-t border-screen-line pt-4 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => setPickerMode("candidato")}
+            className="flex h-12 items-center justify-center gap-2 rounded-lg border-2 border-ink/15 bg-white text-sm font-bold text-ink transition-colors duration-150 hover:border-ink/40"
+          >
+            <List size={17} aria-hidden="true" />
+            Ver candidatos
+          </button>
+          {showsLegenda ? (
+            <button
+              type="button"
+              onClick={() => setPickerMode("legenda")}
+              className="flex h-12 items-center justify-center gap-2 rounded-lg border-2 border-ink/15 bg-white text-sm font-bold text-ink transition-colors duration-150 hover:border-ink/40"
+            >
+              <Flag size={16} aria-hidden="true" />
+              Ver partidos
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      {legendaLoading ? (
+        <div className="border-t-2 border-screen-line p-4 sm:p-5">
+          <CandidateSkeleton legenda />
+        </div>
+      ) : legendaError && number.length === LEGENDA_LENGTH ? (
+        <p className="border-t-2 border-screen-line px-4 py-4 text-xs leading-5 text-muted sm:px-5">
+          {legendaError}
+        </p>
+      ) : legenda ? (
+        <div className="border-t-2 border-screen-line">
+          <CandidateCard
+            candidato={legenda}
+            uf={uf}
+            onConfirm={() => onConfirm(legenda)}
+            onClear={clearSlot}
+          />
+        </div>
       ) : null}
+
+      {picker}
     </div>
   );
 }

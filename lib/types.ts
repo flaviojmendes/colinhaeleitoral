@@ -8,6 +8,8 @@ export type CargoSlug =
 
 export type Uf = string;
 
+export type TipoVoto = "candidato" | "legenda";
+
 export interface CandidatoColinha {
   id: string;
   numero: string;
@@ -15,6 +17,9 @@ export interface CandidatoColinha {
   nomeCompleto?: string;
   partido: string;
   cargo: CargoSlug;
+  /** Ausente em registros salvos antes do voto de legenda existir. */
+  tipoVoto?: TipoVoto;
+  candidatosNoPartido?: number;
   fotoUrl: string | null;
   patrimonioDeclarado: number | null;
   totalGastos: number | null;
@@ -53,6 +58,16 @@ export interface CertidaoCandidato {
   nome: string;
   url: string;
   tipo: string;
+  grupo?: string;
+  descricao?: string;
+  arquivo?: string;
+}
+
+export interface NoticiaCandidato {
+  titulo: string;
+  link: string;
+  dataPublicacao: string;
+  fonte: string;
 }
 
 export interface ProcessoJudicial {
@@ -87,6 +102,13 @@ export interface CandidateListItem {
   cargo: CargoSlug;
   fotoUrl: string | null;
   situacao?: string;
+}
+
+export interface PartidoListItem {
+  numero: string;
+  sigla: string;
+  nome: string;
+  totalCandidatos: number;
 }
 
 export interface TSEParty {
@@ -169,4 +191,6 @@ export interface CargoConfig {
   shortLabel: string;
   tseCode: number;
   maxLength: number;
+  /** Eleição proporcional: aceita voto de legenda com o número do partido. */
+  proporcional: boolean;
 }

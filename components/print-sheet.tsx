@@ -57,18 +57,20 @@ export function PrintSheet() {
 
   if (!hydrated) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-paper px-5">
-        <p className="text-sm font-semibold text-muted">Preparando sua colinha…</p>
+      <main className="flex min-h-screen items-center justify-center bg-console-deep px-5">
+        <p className="text-sm font-semibold text-console-muted">
+          Preparando sua colinha…
+        </p>
       </main>
     );
   }
 
   return (
-    <main className="print-sheet min-h-screen bg-paper text-ink print:bg-white print:text-black">
+    <main className="print-sheet min-h-screen bg-console-deep print:bg-white print:text-black">
       <div className="no-print mx-auto flex max-w-2xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
         <Link
           href="/"
-          className="inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-bold text-muted hover:bg-paper-deep hover:text-ink"
+          className="inline-flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-bold text-console-muted transition-colors duration-150 hover:text-console-ink"
         >
           <ArrowLeft size={17} aria-hidden="true" />
           Voltar e editar
@@ -77,7 +79,7 @@ export function PrintSheet() {
           <button
             type="button"
             onClick={() => window.print()}
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-accent px-4 text-sm font-bold text-white hover:bg-accent-deep"
+            className="inline-flex h-11 items-center gap-2 rounded-lg bg-white px-4 text-sm font-bold text-ink transition-colors duration-150 hover:bg-screen"
           >
             <Printer size={16} aria-hidden="true" />
             Imprimir novamente
@@ -85,14 +87,14 @@ export function PrintSheet() {
         ) : null}
       </div>
 
-      <div className="mx-auto max-w-2xl px-5 pb-12 pt-6 sm:px-8 sm:pt-12 print:max-w-none print:px-0 print:pb-0 print:pt-0">
+      <div className="mx-auto mb-10 max-w-2xl rounded-2xl bg-white px-6 pb-10 pt-8 text-ink sm:px-10 print:mb-0 print:max-w-none print:rounded-none print:px-0 print:pb-0 print:pt-0">
         {confirmed.length > 0 ? (
           <>
             <header className="border-b-2 border-ink pb-5 print:border-black">
-              <p className="text-[10px] font-black uppercase tracking-[0.22em]">
-                Eleições Gerais · 2026
+              <p className="font-mono text-[10px] tracking-widest">
+                ELEIÇÕES GERAIS · 2026
               </p>
-              <h1 className="display-serif mt-2 text-4xl font-bold tracking-[-0.05em] sm:text-5xl print:text-4xl">
+              <h1 className="mt-2 text-4xl font-black tracking-tight print:text-4xl">
                 Minha colinha de votação
               </h1>
               <p className="mt-3 text-sm font-semibold">
@@ -101,41 +103,55 @@ export function PrintSheet() {
             </header>
 
             <section className="mt-7">
-              <div className="mb-3 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.18em]">
-                <span>Cargo</span>
-                <span>Número · Nome</span>
+              <div className="mb-3 flex items-center justify-between font-mono text-[10px] tracking-widest">
+                <span>CARGO E NOME</span>
+                <span>NÚMERO</span>
               </div>
               <div className="divide-y-2 divide-ink border-y-2 border-ink print:divide-black print:border-black">
-                {confirmed.map(({ cargo, candidato }) => (
+                {confirmed.map(({ cargo, candidato }) => {
+                  const isLegenda = candidato.tipoVoto === "legenda";
+                  const cargoLabel = (
+                    cargo.slug === "deputado-estadual" && uf === "DF"
+                      ? "Deputado Distrital"
+                      : cargo.label
+                  ).toLocaleUpperCase("pt-BR");
+
+                  return (
                   <div
                     key={cargo.slug}
                     className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-5 py-5 print:py-4"
                   >
                     <div>
-                      <p className="text-xs font-black uppercase tracking-[0.12em]">
-                        {cargo.slug === "deputado-estadual" && uf === "DF"
-                          ? "Deputado Distrital"
-                          : cargo.label}
+                      <p className="font-mono text-[10px] tracking-widest">
+                        {isLegenda
+                          ? `${cargoLabel} · VOTO DE LEGENDA`
+                          : cargoLabel}
                       </p>
                       <p className="mt-1 truncate text-lg font-bold sm:text-xl print:text-lg">
-                        {candidato.nomeUrna}
+                        {isLegenda ? candidato.partido : candidato.nomeUrna}
                       </p>
+                      {isLegenda && candidato.nomeUrna !== candidato.partido ? (
+                        <p className="truncate text-sm">
+                          {candidato.nomeUrna}
+                        </p>
+                      ) : null}
                     </div>
                     <p className="text-right font-mono text-4xl font-black tracking-[0.08em] sm:text-5xl print:text-4xl">
                       {candidato.numero}
                     </p>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
 
-            <footer className="mt-7 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted print:text-black">
-              Leve este papel. Celular não é permitido na cabine de votação.
+            <footer className="mt-7 font-mono text-[10px] tracking-widest text-muted print:text-black">
+              LEVE ESTE PAPEL · CELULAR NÃO É PERMITIDO NA CABINE
             </footer>
           </>
         ) : (
-          <div className="rounded-2xl border border-line bg-white/70 p-8 text-center">
-            <h1 className="display-serif text-3xl font-bold">
+          <div className="py-8 text-center">
+            <h1 className="text-2xl font-black tracking-tight">
               Sua colinha ainda está vazia
             </h1>
             <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-muted">
@@ -144,7 +160,7 @@ export function PrintSheet() {
             </p>
             <Link
               href="/"
-              className="mt-6 inline-flex h-11 items-center rounded-xl bg-accent px-5 text-sm font-bold text-white"
+              className="mt-6 inline-flex h-12 items-center rounded-lg bg-accent px-5 text-sm font-bold text-white transition-colors duration-150 hover:bg-accent-deep"
             >
               Escolher candidatos
             </Link>

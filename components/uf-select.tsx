@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin } from "lucide-react";
+import { ChevronDown, MapPin } from "lucide-react";
 
 import { UF_OPTIONS } from "@/lib/cargos";
 
@@ -11,17 +11,22 @@ interface UfSelectProps {
 
 export function UfSelect({ value, onChange }: UfSelectProps) {
   return (
-    <label className="flex min-w-0 items-center gap-3">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-paper-deep text-accent">
-        <MapPin size={17} strokeWidth={2.2} aria-hidden="true" />
-      </span>
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
-          Seu estado
-        </span>
+    <div>
+      <label
+        htmlFor="uf-select"
+        className="font-mono text-[10px] tracking-widest text-muted"
+      >
+        ONDE VOCÊ VOTA
+      </label>
+      <div className="relative mt-1.5">
+        <MapPin
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+          size={17}
+          aria-hidden="true"
+        />
         <select
-          aria-label="Selecione o seu estado"
-          className="mt-0.5 w-full appearance-none bg-transparent text-sm font-semibold text-ink outline-none"
+          id="uf-select"
+          className="h-12 w-full appearance-none rounded-lg border-2 border-screen-line bg-white pl-10 pr-10 text-sm font-bold text-ink transition-colors duration-150 hover:border-ink/30"
           value={value}
           onChange={(event) => onChange(event.target.value)}
         >
@@ -31,7 +36,12 @@ export function UfSelect({ value, onChange }: UfSelectProps) {
             </option>
           ))}
         </select>
-      </span>
-    </label>
+        <ChevronDown
+          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted"
+          size={17}
+          aria-hidden="true"
+        />
+      </div>
+    </div>
   );
 }

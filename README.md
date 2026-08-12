@@ -35,8 +35,9 @@ alternativo ou o Redis da Vercel:
   Zustand.
 - `app/colinha/page.tsx`: folha de impressão em alto contraste, sem fotos.
 - `lib/datajud.ts`: consulta do Datajud nos tribunais estadual e federal da UF.
-- As certidões PDF publicadas no registro do candidato pelo TSE são exibidas
-  na mesma seção jurídica.
+- Os documentos PDF publicados no registro do candidato pelo TSE são exibidos
+  na mesma seção jurídica, agrupados por categoria e com o nome original quando
+  disponível.
 
 Os endpoints usados são:
 
@@ -52,6 +53,47 @@ Na interface, o botão “Escolher pela lista de candidatos” usa
 partido e busca os detalhes completos somente depois da escolha. Os detalhes
 financeiros também incluem, quando publicados pelo TSE, os gastos do
 diretório partidário do candidato.
+
+## Voto de legenda
+
+Deputado Federal e Deputado Estadual/Distrital são eleições proporcionais e
+aceitam voto de legenda: o eleitor digita apenas os dois dígitos do partido.
+
+O campo desses cargos acompanha a digitação como a urna faz, sem alternador de
+modo: ao completar os 2 primeiros dígitos o partido aparece logo abaixo, já
+confirmável; se o eleitor continuar digitando até o número completo, o
+candidato substitui a legenda. Apagar dígitos volta para a legenda. A colinha
+impressa marca a linha como `VOTO DE LEGENDA`. Os cargos majoritários
+(Senador, Governador e Presidente) rejeitam o modo com HTTP 400.
+
+```text
+GET /api/candidatos?uf={UF}&cargo={cargo}&partidos=true
+GET /api/candidatos?uf={UF}&cargo={cargo}&numero={partido}&legenda=true
+```
+
+A lista de partidos é derivada dos candidatos registrados para o cargo naquela
+UF, então só aparecem siglas que de fato podem receber o voto; o nome completo
+vem do diretório de partidos da eleição. Um número sem candidatos no cargo
+retorna 404 em vez de aceitar um voto que seria nulo.
+
+## Notícias recentes
+
+A seção “Notícias recentes” do card do candidato busca as 3 matérias mais
+novas no RSS do Google Notícias Brasil, pelo nome de urna entre aspas somado ao
+termo `eleições`:
+
+```text
+GET /api/noticias?nome={nomeDeUrna}
+```
+
+O parse do XML acontece no servidor com `rss-parser`, o fetch usa Data Cache de
+1 hora e a resposta é um array de `{ titulo, link, dataPublicacao, fonte }` já
+ordenado da mais recente para a mais antiga. O sufixo com o nome do veículo,
+que o Google repete no título, é removido porque a fonte vai em campo próprio.
+No cliente, o SWR só dispara a requisição quando a seção é aberta.
+
+A busca é automática e não há curadoria: a interface diz isso explicitamente,
+porque homônimos e matérias fora de contexto podem aparecer.
 
 O botão “Consultar processos judiciais” consulta o TJ e o TRF correspondentes
 à UF selecionada. A busca é feita por nome completo, pode conter homônimos e

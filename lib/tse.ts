@@ -1,4 +1,5 @@
 import {
+  LEGENDA_LENGTH,
   formatCandidateNumber,
   getCargoConfig,
   getElectionUf,
@@ -12,6 +13,7 @@ import type {
   CargoSlug,
   GastoDetalhe,
   GastosPartido,
+  PartidoListItem,
   PatrimonioDetalhe,
   TSEAccountsResponse,
   TSEParty,
@@ -32,6 +34,20 @@ export class CandidateNotFoundError extends Error {
   }
 }
 
+export class PartyNotFoundError extends Error {
+  constructor() {
+    super("Partido sem candidatos para este cargo");
+    this.name = "PartyNotFoundError";
+  }
+}
+
+export class PartyVoteNotAllowedError extends Error {
+  constructor() {
+    super("Este cargo não aceita voto de legenda");
+    this.name = "PartyVoteNotAllowedError";
+  }
+}
+
 function asNumber(value: number | string | null | undefined): number | null {
   if (value === null || value === undefined || value === "") {
     return null;
@@ -45,20 +61,136 @@ function partyNumberFromCandidateNumber(numero: string): string {
   return numero.length <= 2 ? numero : numero.slice(0, 2);
 }
 
-function certificateLabel(fileName: string): string {
-  const normalizedName = fileName.toLocaleLowerCase("pt-BR");
+interface CertificateMetadata {
+  nome: string;
+  grupo: string;
+  descricao: string;
+  arquivo?: string;
+}
+
+function certificateMetadata(fileName: string | null): CertificateMetadata {
+  const normalizedName = fileName?.toLocaleLowerCase("pt-BR") ?? "";
+  const compactProcessMatch = fileName?.match(/\d{20}/)?.[0];
+  const dottedProcessMatch = fileName?.match(
+    /\d{4}\.\d\.\d{2}\.\d{4}[a-z0-9]*/i,
+  );
+
+  if (compactProcessMatch || dottedProcessMatch) {
+    const processNumber = compactProcessMatch
+      ? `${compactProcessMatch.slice(0, 7)}-${compactProcessMatch.slice(
+          7,
+          9,
+        )}.${compactProcessMatch.slice(9, 13)}.${compactProcessMatch.slice(
+          13,
+          14,
+        )}.${compactProcessMatch.slice(14, 16)}.${compactProcessMatch.slice(
+          16,
+        )}`
+      : dottedProcessMatch?.[0];
+    const justiceCode = compactProcessMatch
+      ? compactProcessMatch.slice(13, 14)
+      : processNumber?.split(".")[1];
+    const justice =
+      justiceCode === "4"
+        ? "Justiça Federal"
+        : justiceCode === "8"
+          ? "Justiça Estadual"
+          : "órgão judicial";
+
+    return {
+      nome: "Documento com referência processual",
+      grupo: `Referências processuais, ${justice}`,
+      descricao: `Referência: ${processNumber}`,
+      arquivo: fileName ?? undefined,
+    };
+  }
 
   if (normalizedName.includes("cert_jf")) {
-    return "Certidão da Justiça Federal";
+    return {
+      nome: "Certidão criminal da Justiça Federal",
+      grupo: "Certidões criminais",
+      descricao: "Documento apresentado para fins de registro de candidatura",
+      arquivo: fileName ?? undefined,
+    };
   }
   if (normalizedName.includes("cert_tj_1g")) {
-    return "Certidão do Tribunal de Justiça — 1º grau";
+    return {
+      nome: "Certidão criminal do Tribunal de Justiça",
+      grupo: "Certidões criminais",
+      descricao: "Distribuição judicial em primeiro grau",
+      arquivo: fileName ?? undefined,
+    };
   }
   if (normalizedName.includes("cert_tj_2g")) {
-    return "Certidão do Tribunal de Justiça — 2º grau";
+    return {
+      nome: "Certidão criminal do Tribunal de Justiça",
+      grupo: "Certidões criminais",
+      descricao: "Distribuição judicial em segundo grau",
+      arquivo: fileName ?? undefined,
+    };
   }
 
-  return "Certidão apresentada ao TSE";
+  const readableFileName = fileName
+    ?.replace(/\.pdf$/i, "")
+    .replace(/compressed/gi, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (normalizedName.includes("planodegoverno")) {
+    return {
+      nome: "Plano de governo",
+      grupo: "Plano de governo",
+      descricao: "Documento programático anexado à candidatura",
+      arquivo: fileName ?? undefined,
+    };
+  }
+
+  if (
+    normalizedName.includes("certid") ||
+    normalizedName.includes("cert_")
+  ) {
+    return {
+      nome: "Certidão identificada no arquivo",
+      grupo: "Certidões com título",
+      descricao: readableFileName
+        ? `Descrição do arquivo: ${readableFileName}`
+        : "Documento apresentado para fins de registro de candidatura",
+      arquivo: fileName ?? undefined,
+    };
+  }
+
+  if (fileName && normalizedName !== "pdf") {
+    return {
+      nome: "Documento anexado ao TSE",
+      grupo: "Documentos com nome de arquivo",
+      descricao: readableFileName
+        ? `Descrição do arquivo: ${readableFileName}`
+        : `Arquivo original: ${fileName}`,
+      arquivo: fileName,
+    };
+  }
+
+  return {
+    nome: "Documento sem título detalhado",
+    grupo: "Documentos sem título no metadado",
+    descricao:
+      "O TSE não informou um título no metadado. Abra o PDF original para consultar o conteúdo.",
+  };
+}
+
+function certificateFileName(
+  file: NonNullable<TSECandidateDetails["arquivos"]>[number],
+): string | null {
+  const candidates = [file.tipo, file.nome].filter(
+    (value): value is string => Boolean(value),
+  );
+
+  return (
+    candidates.find(
+      (value) => value.toLocaleLowerCase("pt-BR") !== "pdf" && /\.pdf$/i.test(value),
+    ) ?? null
+  );
 }
 
 function buildCertificates(
@@ -70,16 +202,22 @@ function buildCertificates(
   );
 
   return (files ?? []).flatMap((file) => {
-    if (!file.idArquivo || !file.nome || !/pdf/i.test(file.tipo ?? "pdf")) {
+    if (!file.idArquivo) {
       return [];
     }
+
+    const fileName = certificateFileName(file);
+    const metadata = certificateMetadata(fileName);
 
     return [
       {
         id: String(file.idArquivo),
-        nome: certificateLabel(file.nome),
+        nome: metadata.nome,
         url: `${documentBase}/${file.idArquivo}`,
-        tipo: file.tipo ?? "pdf",
+        tipo: "pdf",
+        grupo: metadata.grupo,
+        descricao: metadata.descricao,
+        arquivo: metadata.arquivo,
       },
     ];
   });
@@ -144,6 +282,27 @@ function unavailablePartyExpenses(party: string): GastosPartido {
   };
 }
 
+/** Diretório oficial de partidos da eleição: traz sigla, nome e código do órgão. */
+async function fetchPartyDirectory(signal: AbortSignal): Promise<TSEParty[]> {
+  try {
+    return await fetchJson<TSEParty[]>(
+      `${TSE_BASE_URL}/prestador/campanha/partidos/${TSE_ELECTION_ID}`,
+      {
+        signal,
+        next: { revalidate: 3600 },
+      },
+    );
+  } catch {
+    return [];
+  }
+}
+
+function findPartyInDirectory(parties: TSEParty[], partyNumber: string) {
+  return parties.find(
+    (item) => String(item.numero) === String(Number(partyNumber)),
+  );
+}
+
 async function fetchPartyExpenses(
   electionUf: string,
   partyNumber: string,
@@ -151,16 +310,8 @@ async function fetchPartyExpenses(
   signal: AbortSignal,
 ): Promise<GastosPartido> {
   try {
-    const parties = await fetchJson<TSEParty[]>(
-      `${TSE_BASE_URL}/prestador/campanha/partidos/${TSE_ELECTION_ID}`,
-      {
-        signal,
-        next: { revalidate: 3600 },
-      },
-    );
-    const party = parties.find(
-      (item) => String(item.numero) === String(Number(partyNumber)),
-    );
+    const parties = await fetchPartyDirectory(signal);
+    const party = findPartyInDirectory(parties, partyNumber);
     const codigoOrgao = String(party?.sqPrestadorConta ?? partyNumber);
     const accountUrl = `${TSE_BASE_URL}/prestador/consulta/partido/${TSE_ELECTION_ID}/${TSE_ELECTION_YEAR}/${electionUf}/${codigoOrgao}/${partyNumber}`;
     const account = await fetchJson<TSEAccountsResponse>(accountUrl, {
@@ -236,6 +387,20 @@ export function makeCandidateListCacheKey(
   return `cand-list:2026:${uf}:${config.tseCode}`;
 }
 
+export function makePartyCacheKey(
+  uf: string,
+  cargo: CargoSlug,
+  numero: string,
+): string {
+  const config = getCargoConfig(cargo, uf);
+  return `legenda:2026:${uf}:${config.tseCode}:${formatCandidateNumber(numero, LEGENDA_LENGTH)}`;
+}
+
+export function makePartyListCacheKey(uf: string, cargo: CargoSlug): string {
+  const config = getCargoConfig(cargo, uf);
+  return `partido-list:2026:${uf}:${config.tseCode}`;
+}
+
 export async function listCandidates(
   params: Omit<CandidateLookupParams, "numero">,
   signal: AbortSignal,
@@ -269,6 +434,124 @@ export async function listCandidates(
         undefined,
     }))
     .sort((left, right) => Number(left.numero) - Number(right.numero));
+}
+
+/**
+ * Partidos que podem receber voto de legenda: só entram os que de fato
+ * lançaram candidatos para o cargo naquela UF.
+ */
+export async function listParties(
+  params: Omit<CandidateLookupParams, "numero">,
+  signal: AbortSignal,
+): Promise<PartidoListItem[]> {
+  const { uf, cargo } = params;
+  const config = getCargoConfig(cargo, uf);
+
+  if (!config.proporcional) {
+    throw new PartyVoteNotAllowedError();
+  }
+
+  const [candidates, directory] = await Promise.all([
+    listCandidates(params, signal),
+    fetchPartyDirectory(signal),
+  ]);
+
+  const parties = new Map<string, PartidoListItem>();
+
+  candidates.forEach((candidate) => {
+    const numero = partyNumberFromCandidateNumber(candidate.numero);
+    const existing = parties.get(numero);
+
+    if (existing) {
+      existing.totalCandidatos += 1;
+      return;
+    }
+
+    const entry = findPartyInDirectory(directory, numero);
+    parties.set(numero, {
+      numero,
+      sigla: entry?.sigla ?? candidate.partido,
+      nome: entry?.nome ?? candidate.partido,
+      totalCandidatos: 1,
+    });
+  });
+
+  return Array.from(parties.values()).sort(
+    (left, right) => Number(left.numero) - Number(right.numero),
+  );
+}
+
+/**
+ * Voto de legenda: o eleitor digita apenas o número do partido e o voto vai
+ * para a sigla, que o usa para eleger seus candidatos mais votados.
+ */
+export async function lookupParty(
+  params: CandidateLookupParams,
+  signal: AbortSignal,
+): Promise<CandidatoColinha> {
+  const { uf, cargo, numero } = params;
+  const config = getCargoConfig(cargo, uf);
+
+  if (!config.proporcional) {
+    throw new PartyVoteNotAllowedError();
+  }
+
+  const electionUf = getElectionUf(cargo, uf);
+  const partyNumber = formatCandidateNumber(numero, LEGENDA_LENGTH);
+
+  const listUrl = new URL(
+    `${TSE_BASE_URL}/candidatura/listar/${TSE_ELECTION_YEAR}/${electionUf}/${TSE_ELECTION_ID}/${config.tseCode}/candidatos`,
+  );
+  listUrl.searchParams.set("partido", partyNumber);
+
+  const candidateList = await fetchJson<TSECandidateListResponse>(
+    listUrl.toString(),
+    {
+      signal,
+      next: { revalidate: 3600 },
+    },
+  );
+
+  // O filtro por partido é aplicado pelo TSE, mas repetimos aqui porque a
+  // ausência do parâmetro faz a API devolver a lista inteira do cargo.
+  const partyCandidates = (candidateList.candidatos ?? []).filter(
+    (candidate) =>
+      partyNumberFromCandidateNumber(
+        formatCandidateNumber(candidate.numero ?? "", config.maxLength),
+      ) === partyNumber,
+  );
+
+  if (partyCandidates.length === 0) {
+    throw new PartyNotFoundError();
+  }
+
+  const sigla =
+    partyCandidates[0].partido?.sigla ??
+    partyCandidates[0].partido?.nome ??
+    "Partido não informado";
+
+  const [directory, gastosPartido] = await Promise.all([
+    fetchPartyDirectory(signal),
+    fetchPartyExpenses(electionUf, partyNumber, sigla, signal),
+  ]);
+
+  const entry = findPartyInDirectory(directory, partyNumber);
+
+  return {
+    id: `legenda:${config.tseCode}:${electionUf}:${partyNumber}`,
+    numero: partyNumber,
+    nomeUrna: entry?.nome ?? sigla,
+    partido: entry?.sigla ?? sigla,
+    cargo,
+    tipoVoto: "legenda",
+    candidatosNoPartido: partyCandidates.length,
+    fotoUrl: null,
+    patrimonioDeclarado: null,
+    totalGastos: gastosPartido.totalContratado,
+    totalGastosPagos: gastosPartido.totalPago,
+    limiteGastos: gastosPartido.limiteGastos,
+    gastosPartido,
+  };
 }
 
 export async function lookupCandidate(
@@ -352,6 +635,7 @@ export async function lookupCandidate(
     nomeUrna: details.nomeUrna ?? summary.nomeUrna ?? "Nome não informado",
     partido,
     cargo,
+    tipoVoto: "candidato",
     fotoUrl: details.fotoUrl ?? summary.fotoUrl ?? null,
     patrimonioDeclarado,
     totalGastos: asNumber(accounts.despesas?.totalDespesasContratadas),
