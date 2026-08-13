@@ -84,6 +84,18 @@ export const UF_OPTIONS = [
   { value: "TO", label: "Tocantins" },
 ] as const;
 
+const UF_LABEL_BY_VALUE = new Map<string, string>(
+  UF_OPTIONS.map((uf) => [uf.value, uf.label]),
+);
+
+export function isKnownUf(value: string): boolean {
+  return UF_LABEL_BY_VALUE.has(value);
+}
+
+export function getUfLabel(value: string): string {
+  return UF_LABEL_BY_VALUE.get(value) ?? value;
+}
+
 const CONFIG_BY_SLUG = new Map(
   CARGOS_2026.map((cargo) => [cargo.slug, cargo]),
 );

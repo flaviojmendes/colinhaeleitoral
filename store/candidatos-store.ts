@@ -1,11 +1,37 @@
 "use client";
 
 import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
+import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
 
+import { COLINHA_STORAGE_KEY } from "@/lib/legal";
+import { hasValidLgpdConsent } from "@/lib/lgpd";
 import type { CargoSlug, CandidatoColinha } from "@/lib/types";
 
 export type ColinhaSlots = Record<CargoSlug, CandidatoColinha | null>;
+
+const gatedLocalStorage: StateStorage = {
+  getItem: (name) => {
+    if (typeof window === "undefined" || !hasValidLgpdConsent()) {
+      return null;
+    }
+
+    return window.localStorage.getItem(name);
+  },
+  setItem: (name, value) => {
+    if (typeof window === "undefined" || !hasValidLgpdConsent()) {
+      return;
+    }
+
+    window.localStorage.setItem(name, value);
+  },
+  removeItem: (name) => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.removeItem(name);
+  },
+};
 
 const emptySlots = (): ColinhaSlots => ({
   "deputado-federal": null,
@@ -48,8 +74,8 @@ export const useCandidatosStore = create<CandidatosState>()(
       resetColinha: () => set({ slots: emptySlots() }),
     }),
     {
-      name: "colinha-eleitoral-2026",
-      storage: createJSONStorage(() => localStorage),
+      name: COLINHA_STORAGE_KEY,
+      storage: createJSONStorage(() => gatedLocalStorage),
       skipHydration: true,
     },
   ),

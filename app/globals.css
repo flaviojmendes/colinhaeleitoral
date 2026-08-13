@@ -165,6 +165,46 @@ a:focus-visible {
   margin: 12mm;
 }
 
+.legal-copy {
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.legal-copy h2 {
+  color: var(--ink);
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 1.75rem 0 0.75rem;
+}
+
+.legal-copy p,
+.legal-copy ul {
+  margin-top: 0.75rem;
+}
+
+.legal-copy ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+
+.legal-copy li {
+  margin-top: 0.4rem;
+}
+
+.legal-copy a {
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.legal-copy strong {
+  color: var(--ink);
+  font-weight: 700;
+}
+
 @media print {
   body {
     background: #fff;

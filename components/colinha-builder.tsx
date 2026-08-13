@@ -1,18 +1,20 @@
 "use client";
 
-import { ExternalLink, Info, Printer, RotateCcw } from "lucide-react";
+import { Info, Printer, RotateCcw } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Toaster, toast } from "sonner";
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
 import { CARGOS_2026 } from "@/lib/cargos";
+import { grantLgpdConsent, hasValidLgpdConsent } from "@/lib/lgpd";
 import type { CandidatoColinha } from "@/lib/types";
 import { useCandidatosStore } from "@/store/candidatos-store";
 
 import { CandidateCard } from "./candidate-card";
 import { ConfirmDialog } from "./confirm-dialog";
+import { SiteFooter } from "./site-footer";
 import { SlotInput } from "./slot-input";
 import { UfSelect } from "./uf-select";
 
@@ -76,6 +78,10 @@ export function ColinhaBuilder() {
   }
 
   function handleConfirm(candidate: CandidatoColinha) {
+    if (!hasValidLgpdConsent()) {
+      grantLgpdConsent();
+    }
+
     setCandidate(candidate.cargo, candidate);
     toast.success(
       candidate.tipoVoto === "legenda"
@@ -142,19 +148,6 @@ export function ColinhaBuilder() {
 
   return (
     <>
-      <Toaster
-        position="top-center"
-        duration={4500}
-        toastOptions={{
-          classNames: {
-            toast:
-              "border-console-edge! bg-console! text-console-ink! shadow-lg!",
-            title: "text-base! font-semibold!",
-            description: "text-sm! text-console-muted!",
-          },
-        }}
-      />
-
       <ConfirmDialog
         open={pendingAction !== null}
         title={
@@ -409,20 +402,7 @@ export function ColinhaBuilder() {
           </section>
         </main>
 
-        <footer className="no-print border-t border-console-edge">
-          <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-6 text-sm text-console-muted sm:flex-row sm:items-center sm:justify-between sm:px-6">
-            <p>Colinha Eleitoral · um papel de lembrete para o dia da votação</p>
-            <a
-              href="https://divulgacandcontas.tse.jus.br/"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex min-h-11 items-center gap-1.5 font-bold text-console-ink hover:text-white"
-            >
-              Ver site oficial do TSE
-              <ExternalLink size={14} aria-hidden="true" />
-            </a>
-          </div>
-        </footer>
+        <SiteFooter />
 
         <div className="no-print fixed inset-x-0 bottom-0 z-20 border-t border-console-edge bg-console-deep/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:hidden">
           <button

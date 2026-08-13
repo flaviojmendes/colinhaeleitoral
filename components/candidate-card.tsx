@@ -18,6 +18,7 @@ import type { CandidatoColinha } from "@/lib/types";
 
 import { CandidateNews } from "./candidate-news";
 import { JudicialRecords } from "./judicial-records";
+import { ShareCandidateButton } from "./share-candidate-button";
 
 interface CandidateCardProps {
   candidato: CandidatoColinha;
@@ -186,6 +187,8 @@ export function CandidateCard({
         ) : null}
 
         <ActionRow
+          candidato={candidato}
+          uf={uf}
           confirmed={confirmed}
           clearLabel={clearLabel}
           confirmLabel="Salvar este partido"
@@ -277,6 +280,8 @@ export function CandidateCard({
       </div>
 
       <ActionRow
+        candidato={candidato}
+        uf={uf}
         confirmed={confirmed}
         clearLabel={clearLabel}
         confirmLabel="Salvar na minha lista"
@@ -332,6 +337,8 @@ export function CandidateCard({
 }
 
 function ActionRow({
+  candidato,
+  uf,
   confirmed,
   clearLabel,
   confirmLabel,
@@ -339,6 +346,8 @@ function ActionRow({
   onClear,
   onConfirm,
 }: {
+  candidato: CandidatoColinha;
+  uf: string;
   confirmed: boolean;
   clearLabel: string;
   confirmLabel: string;
@@ -349,15 +358,16 @@ function ActionRow({
   return (
     <div className="border-t border-screen-line bg-screen-deep p-3 sm:p-4">
       {confirmed ? (
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="space-y-3">
           <p className="flex items-center gap-2 text-base font-bold text-accent-deep">
             <ShieldCheck size={20} aria-hidden="true" />
             Salvo na sua lista
           </p>
+          <ShareCandidateButton candidato={candidato} uf={uf} variant="primary" />
           <button
             type="button"
             onClick={onClear}
-            className="flex h-12 items-center justify-center gap-2 rounded-xl bg-coral px-5 text-base font-bold text-coral-ink transition-colors duration-150 hover:bg-coral-deep"
+            className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-coral px-5 text-base font-bold text-coral-ink transition-colors duration-150 hover:bg-coral-deep"
           >
             <RotateCcw size={17} aria-hidden="true" />
             {clearLabel}
@@ -382,6 +392,9 @@ function ActionRow({
               <Check size={20} strokeWidth={3} aria-hidden="true" />
               {confirmLabel}
             </button>
+          </div>
+          <div className="mt-2">
+            <ShareCandidateButton candidato={candidato} uf={uf} />
           </div>
           <p className="mt-3 text-center text-sm leading-5 text-muted">
             {note}

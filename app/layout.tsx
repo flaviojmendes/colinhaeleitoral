@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import type { Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
+import { AppToaster } from "@/components/app-toaster";
+import { PrivacyConsent } from "@/components/privacy-consent";
+
 import "./globals.css";
 
 const geistSans = Geist({
@@ -37,7 +40,11 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="pt-BR" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <AppToaster />
+        <PrivacyConsent />
+      </body>
     </html>
   );
 }
