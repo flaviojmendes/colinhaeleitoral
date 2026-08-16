@@ -7,6 +7,8 @@ import { useEffect, useMemo, useState } from "react";
 import { CARGOS_2026 } from "@/lib/cargos";
 import { useCandidatosStore } from "@/store/candidatos-store";
 
+import { ShareColinhaButton } from "./share-colinha-button";
+
 export function PrintSheet() {
   const uf = useCandidatosStore((state) => state.uf);
   const slots = useCandidatosStore((state) => state.slots);
@@ -88,8 +90,8 @@ export function PrintSheet() {
                 aria-hidden="true"
               />
               <span>
-                Toque em <strong>Imprimir</strong>. Se não tiver impressora,
-                tire uma foto desta tela ou anote os números no papel.
+                Envie a foto no WhatsApp, Instagram ou TikTok, ou toque em
+                Imprimir. Celular não entra na cabine: no dia, leve papel.
               </span>
             </p>
           </div>
@@ -156,11 +158,12 @@ export function PrintSheet() {
               Leve este papel. Celular não é permitido na cabine.
             </footer>
 
-            <div className="no-print mt-8">
+            <div className="no-print mt-8 grid gap-2">
+              <ShareColinhaButton uf={uf} slots={slots} />
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-accent text-base font-bold text-white transition-colors duration-150 hover:bg-accent-deep"
+                className="flex h-14 w-full items-center justify-center gap-2 rounded-xl border-2 border-ink/15 bg-white text-base font-bold text-ink transition-colors duration-150 hover:border-ink/40"
               >
                 <Printer size={18} aria-hidden="true" />
                 Imprimir minha lista

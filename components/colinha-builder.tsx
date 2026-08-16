@@ -14,6 +14,7 @@ import { useCandidatosStore } from "@/store/candidatos-store";
 
 import { CandidateCard } from "./candidate-card";
 import { ConfirmDialog } from "./confirm-dialog";
+import { ShareColinhaButton } from "./share-colinha-button";
 import { SiteFooter } from "./site-footer";
 import { SlotInput } from "./slot-input";
 import { UfSelect } from "./uf-select";
@@ -309,6 +310,9 @@ export function ColinhaBuilder() {
                 <Printer size={18} aria-hidden="true" />
                 {printLabel}
               </button>
+              <div className="mt-2 hidden sm:block">
+                <ShareColinhaButton uf={uf} slots={slots} variant="secondary" />
+              </div>
             </div>
           </section>
 
@@ -405,15 +409,25 @@ export function ColinhaBuilder() {
         <SiteFooter />
 
         <div className="no-print fixed inset-x-0 bottom-0 z-20 border-t border-console-edge bg-console-deep/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:hidden">
-          <button
-            type="button"
-            onClick={() => router.push("/colinha")}
-            disabled={confirmedCount === 0}
-            className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-white text-base font-bold text-ink transition-colors duration-150 hover:bg-screen disabled:cursor-not-allowed disabled:bg-console-edge disabled:text-console-muted"
-          >
-            <Printer size={18} aria-hidden="true" />
-            {printLabel}
-          </button>
+          <div className={confirmedCount > 0 ? "grid grid-cols-2 gap-2" : ""}>
+            {confirmedCount > 0 ? (
+              <ShareColinhaButton
+                uf={uf}
+                slots={slots}
+                variant="primary"
+                label="Enviar foto"
+              />
+            ) : null}
+            <button
+              type="button"
+              onClick={() => router.push("/colinha")}
+              disabled={confirmedCount === 0}
+              className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-white text-base font-bold text-ink transition-colors duration-150 hover:bg-screen disabled:cursor-not-allowed disabled:bg-console-edge disabled:text-console-muted"
+            >
+              <Printer size={18} aria-hidden="true" />
+              {confirmedCount === 0 ? printLabel : "Imprimir"}
+            </button>
+          </div>
         </div>
       </div>
     </>

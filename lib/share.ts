@@ -49,3 +49,35 @@ export function buildCandidateShareText(
 
   return `${lines.join("\n")}\n\nConfira no Colinha Eleitoral:\n${url}`;
 }
+
+export function buildColinhaShareText(uf: string, count: number) {
+  const place = getUfLabel(uf);
+  return `Minha colinha de votação · ${place} · ${count} cargo${
+    count === 1 ? "" : "s"
+  }.\nFeita no Colinha Eleitoral.`;
+}
+
+export function canShareFiles(files: File[]) {
+  return (
+    typeof navigator !== "undefined" &&
+    typeof navigator.canShare === "function" &&
+    navigator.canShare({ files })
+  );
+}
+
+export async function copyText(text: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const field = document.createElement("textarea");
+  field.value = text;
+  field.setAttribute("readonly", "");
+  field.style.position = "fixed";
+  field.style.left = "-9999px";
+  document.body.appendChild(field);
+  field.select();
+  document.execCommand("copy");
+  document.body.removeChild(field);
+}
