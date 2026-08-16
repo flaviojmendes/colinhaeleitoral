@@ -6,6 +6,17 @@ export function SiteFooter() {
     <footer className="no-print border-t border-console-edge">
       <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-6 text-sm text-console-muted sm:px-6">
         <p>Colinha Eleitoral · um papel de lembrete para o dia da votação</p>
+        <p>
+          feito com 👀 por{" "}
+          <a
+            href="https://instagram.com/trilhainfo"
+            target="_blank"
+            rel="noreferrer"
+            className="font-bold text-console-ink hover:text-white"
+          >
+            @trilhainfo
+          </a>
+        </p>
         <nav
           aria-label="Informações legais"
           className="flex flex-wrap items-center gap-x-5 gap-y-2"
