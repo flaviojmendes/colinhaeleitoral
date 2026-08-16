@@ -224,8 +224,12 @@ function buildCertificates(
 }
 
 function buildExpenseDetails(
-  accounts: TSEAccountsResponse,
+  accounts: TSEAccountsResponse | null | undefined,
 ): GastoDetalhe[] {
+  if (!accounts) {
+    return [];
+  }
+
   const concentration = (accounts.concentracaoDespesas ?? []).flatMap(
     (expense) => {
       const value = asNumber(expense.valor);
@@ -356,6 +360,17 @@ async function fetchJson<T>(
     return JSON.parse(text) as T;
   } catch {
     throw new Error(`TSE retornou JSON inválido em ${url}`);
+  }
+}
+
+async function fetchJsonOptional<T>(
+  url: string,
+  init: RequestInit & { next?: { revalidate: number } },
+): Promise<T | null> {
+  try {
+    return await fetchJson<T>(url, init);
+  } catch {
+    return null;
   }
 }
 
@@ -595,7 +610,7 @@ export async function lookupCandidate(
       signal,
       next: { revalidate: 900 },
     }),
-    fetchJson<TSEAccountsResponse>(accountsUrl, {
+    fetchJsonOptional<TSEAccountsResponse>(accountsUrl, {
       signal,
       next: { revalidate: 900 },
     }),
@@ -638,13 +653,13 @@ export async function lookupCandidate(
     tipoVoto: "candidato",
     fotoUrl: details.fotoUrl ?? summary.fotoUrl ?? null,
     patrimonioDeclarado,
-    totalGastos: asNumber(accounts.despesas?.totalDespesasContratadas),
+    totalGastos: asNumber(accounts?.despesas?.totalDespesasContratadas),
     patrimonioDetalhes,
     gastosDetalhes,
     gastosPartido,
     certidoes,
-    totalGastosPagos: asNumber(accounts.despesas?.totalDespesasPagas),
-    limiteGastos: asNumber(accounts.despesas?.valorLimiteDeGastos),
+    totalGastosPagos: asNumber(accounts?.despesas?.totalDespesasPagas),
+    limiteGastos: asNumber(accounts?.despesas?.valorLimiteDeGastos),
     situacao:
       details.descricaoSituacaoCandidato ??
       details.descricaoSituacao ??
