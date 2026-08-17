@@ -1,6 +1,6 @@
 "use client";
 
-import { Info, Printer, RotateCcw } from "lucide-react";
+import { Info, Printer, RotateCcw, Sparkles } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -14,6 +14,7 @@ import { useCandidatosStore } from "@/store/candidatos-store";
 
 import { CandidateCard } from "./candidate-card";
 import { ConfirmDialog } from "./confirm-dialog";
+import { CuriosidadesSection } from "./curiosidades-section";
 import { ShareColinhaButton } from "./share-colinha-button";
 import { SiteFooter } from "./site-footer";
 import { SlotInput } from "./slot-input";
@@ -194,14 +195,24 @@ export function ColinhaBuilder() {
               </span>
             </Link>
 
-            <button
-              type="button"
-              onClick={handleResetRequest}
-              className="flex h-12 items-center gap-2 rounded-xl border border-console-edge px-4 text-sm font-bold text-console-ink transition-colors duration-150 hover:bg-console"
-            >
-              <RotateCcw size={16} aria-hidden="true" />
-              Recomeçar
-            </button>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/curiosidades"
+                className="flex h-12 items-center gap-1.5 rounded-xl border border-coral/30 bg-coral/10 px-3.5 text-sm font-bold text-coral transition-colors duration-150 hover:bg-coral/20"
+              >
+                <Sparkles size={16} aria-hidden="true" />
+                <span className="hidden sm:inline">Ver</span> rankings
+              </Link>
+
+              <button
+                type="button"
+                onClick={handleResetRequest}
+                className="flex h-12 items-center gap-2 rounded-xl border border-console-edge px-4 text-sm font-bold text-console-ink transition-colors duration-150 hover:bg-console"
+              >
+                <RotateCcw size={16} aria-hidden="true" />
+                Recomeçar
+              </button>
+            </div>
           </div>
         </header>
 
@@ -394,6 +405,8 @@ export function ColinhaBuilder() {
                 );
               })}
             </div>
+
+            <CuriosidadesSection />
 
             <div className="mt-6 flex items-start gap-3 rounded-xl border border-console-edge px-4 py-4 text-sm leading-6 text-console-muted">
               <Info className="mt-0.5 shrink-0" size={18} aria-hidden="true" />

@@ -451,6 +451,18 @@ export async function listCandidates(
     .sort((left, right) => Number(left.numero) - Number(right.numero));
 }
 
+export async function fetchCandidateDetailsById(
+  electionUf: string,
+  candidateId: string,
+  signal: AbortSignal,
+): Promise<TSECandidateDetails | null> {
+  const detailUrl = `${TSE_BASE_URL}/candidatura/buscar/${TSE_ELECTION_YEAR}/${electionUf}/${TSE_ELECTION_ID}/candidato/${encodeURIComponent(candidateId)}`;
+  return fetchJsonOptional<TSECandidateDetails>(detailUrl, {
+    signal,
+    next: { revalidate: 3600 },
+  });
+}
+
 /**
  * Partidos que podem receber voto de legenda: só entram os que de fato
  * lançaram candidatos para o cargo naquela UF.

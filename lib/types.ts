@@ -147,11 +147,25 @@ export interface TSEAsset {
   valor?: number | string | null;
 }
 
+export interface TSEPreviousElection {
+  nrAno?: number | string | null;
+  cargo?: string | null;
+  partido?: string | null;
+  situacaoTotalizacao?: string | null;
+}
+
 export interface TSECandidateDetails extends TSECandidateSummary {
   bens?: TSEAsset[] | null;
   totalDeBens?: number | string | null;
   st_DIVULGA_BENS?: boolean | null;
   arquivos?: TSEFile[] | null;
+  ocupacao?: string | null;
+  dataDeNascimento?: string | null;
+  grauInstrucao?: string | null;
+  descricaoSexo?: string | null;
+  sgUfNascimento?: string | null;
+  st_REELEICAO?: boolean | null;
+  eleicoesAnteriores?: TSEPreviousElection[] | null;
 }
 
 export interface TSEFile {
@@ -196,3 +210,86 @@ export interface CargoConfig {
   /** Eleição proporcional: aceita voto de legenda com o número do partido. */
   proporcional: boolean;
 }
+
+export type CuriosidadeCategoria =
+  | "mais-ricos"
+  | "menos-patrimonio"
+  | "mais-jovens"
+  | "mais-experientes"
+  | "recordistas-eleicoes"
+  | "estreantes"
+  | "ocupacoes"
+  | "reeleicao";
+
+export interface CuriosidadeCandidato {
+  id: string;
+  nomeUrna: string;
+  nomeCompleto?: string;
+  numero: string;
+  partido: string;
+  cargo: CargoSlug;
+  cargoLabel: string;
+  uf: string;
+  fotoUrl: string | null;
+  patrimonioDeclarado: number | null;
+  idade: number | null;
+  anoNascimento: number | null;
+  ocupacao: string | null;
+  grauInstrucao: string | null;
+  eleicoesAnteriores: number;
+  reeleicao: boolean;
+  bemNotavel?: {
+    descricao: string;
+    valor: number;
+    tipo?: string | null;
+  };
+}
+
+export interface CuriosidadeItem {
+  id: string;
+  posicao?: number;
+  nomeUrna: string;
+  nomeCompleto?: string;
+  numero: string;
+  partido: string;
+  cargo: CargoSlug;
+  cargoLabel: string;
+  uf: string;
+  fotoUrl: string | null;
+  destaquePrincipal: string;
+  subtituloDestaque: string;
+  curiosidadeTexto: string;
+  patrimonioDeclarado?: number | null;
+  idade?: number | null;
+  anoNascimento?: number | null;
+  ocupacao?: string | null;
+  eleicoesDisputadas?: number | null;
+  bemNotavel?: {
+    descricao: string;
+    valor: number;
+    tipo?: string | null;
+  };
+  categoria: CuriosidadeCategoria;
+  badge?: string;
+}
+
+export interface CuriosidadeEstatistica {
+  id: string;
+  titulo: string;
+  valor: string;
+  descricao: string;
+  icone: "patrimonio" | "idade" | "eleicoes" | "candidatos" | "partidos" | "diversidade";
+}
+
+export interface CuriosidadesResponse {
+  itens: CuriosidadeItem[];
+  estatisticas: CuriosidadeEstatistica[];
+  totalItens: number;
+  totalCandidatos: number;
+  categoria: CuriosidadeCategoria | "todas";
+  uf: string;
+  cargo?: string;
+  atualizadoEm: string | null;
+  fonte: "tse" | "cache";
+}
+

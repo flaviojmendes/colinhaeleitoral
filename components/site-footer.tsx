@@ -18,9 +18,15 @@ export function SiteFooter() {
           </a>
         </p>
         <nav
-          aria-label="Informações legais"
+          aria-label="Informações legais e navegação"
           className="flex flex-wrap items-center gap-x-5 gap-y-2"
         >
+          <Link
+            href="/curiosidades"
+            className="inline-flex min-h-11 items-center font-bold text-coral hover:underline"
+          >
+            Rankings
+          </Link>
           <Link
             href="/privacidade"
             className="inline-flex min-h-11 items-center font-bold text-console-ink hover:text-white"

@@ -7,7 +7,7 @@ interface MemoryValue {
 
 interface KvAdapter {
   get<T>(key: string): Promise<T | null>;
-  set<T>(key: string, value: T): Promise<void>;
+  set<T>(key: string, value: T, ttlSeconds?: number): Promise<void>;
 }
 
 const memoryStore = new Map<string, MemoryValue>();
@@ -32,10 +32,10 @@ const memoryKv: KvAdapter = {
     return item.value as T;
   },
 
-  async set(key: string, value: unknown) {
+  async set(key: string, value: unknown, ttlSeconds?: number) {
     memoryStore.set(key, {
       value,
-      expiresAt: Date.now() + MEMORY_TTL_MS,
+      expiresAt: Date.now() + (ttlSeconds ? ttlSeconds * 1000 : MEMORY_TTL_MS),
     });
   },
 };
@@ -45,7 +45,12 @@ export const kv: KvAdapter = hasVercelKv
       async get<T>(key: string) {
         return vercelKv.get<T>(key);
       },
-      async set(key: string, value: unknown) {
+      async set(key: string, value: unknown, ttlSeconds?: number) {
+        if (ttlSeconds) {
+          await vercelKv.set(key, value, { ex: ttlSeconds });
+          return;
+        }
+
         await vercelKv.set(key, value);
       },
     }
