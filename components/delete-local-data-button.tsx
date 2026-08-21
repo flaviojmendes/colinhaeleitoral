@@ -12,7 +12,7 @@ export function DeleteLocalDataButton() {
 
   function handleDelete() {
     const confirmed = window.confirm(
-      "Isso apaga a lista salva neste celular e o seu ok de privacidade. Não dá para desfazer.",
+      "Isso apaga a lista salva neste celular, o seu ok de privacidade e desliga o Google Analytics. Não dá para desfazer.",
     );
 
     if (!confirmed) {

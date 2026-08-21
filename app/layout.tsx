@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import type { Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
+import { AnalyticsConsentBanner } from "@/components/analytics-consent-banner";
 import { AppToaster } from "@/components/app-toaster";
+import { GoogleAnalytics } from "@/components/google-analytics";
 import { PrivacyConsent } from "@/components/privacy-consent";
 
 import "./globals.css";
@@ -44,6 +46,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {children}
         <AppToaster />
         <PrivacyConsent />
+        <AnalyticsConsentBanner />
+        <GoogleAnalytics />
       </body>
     </html>
   );

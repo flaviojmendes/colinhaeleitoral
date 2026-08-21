@@ -1,4 +1,4 @@
-export const LEGAL_UPDATED_AT = "12 de agosto de 2026";
+export const LEGAL_UPDATED_AT = "21 de agosto de 2026";
 
 export const CONTROLLER_NAME = "Colinha Eleitoral";
 

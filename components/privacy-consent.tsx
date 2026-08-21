@@ -10,6 +10,7 @@ import {
   hasDeferredLgpdConsent,
   hasStoredColinha,
   hasValidLgpdConsent,
+  setAnalyticsConsent,
 } from "@/lib/lgpd";
 import { useCandidatosStore } from "@/store/candidatos-store";
 
@@ -19,6 +20,7 @@ export function PrivacyConsent() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [hasSavedList, setHasSavedList] = useState(false);
+  const [allowAnalytics, setAllowAnalytics] = useState(false);
 
   useEffect(() => {
     if (HIDDEN_PATHS.has(pathname)) {
@@ -53,6 +55,7 @@ export function PrivacyConsent() {
 
   function handleAccept() {
     grantLgpdConsent();
+    setAnalyticsConsent(allowAnalytics);
     void useCandidatosStore.persist.rehydrate();
     setOpen(false);
   }
@@ -63,7 +66,7 @@ export function PrivacyConsent() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-console-deep/80 p-0 sm:items-center sm:p-5">
+    <div className="no-print fixed inset-0 z-50 flex items-end justify-center bg-console-deep/80 p-0 sm:items-center sm:p-5">
       <div
         role="dialog"
         aria-modal="true"
@@ -98,6 +101,20 @@ export function PrivacyConsent() {
               envia só o link daquele candidato, não a sua lista inteira.
             </p>
           </div>
+
+          <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-ink/10 bg-white px-3 py-3">
+            <input
+              type="checkbox"
+              checked={allowAnalytics}
+              onChange={(event) => setAllowAnalytics(event.target.checked)}
+              className="mt-1 size-4 shrink-0 accent-accent"
+            />
+            <span className="text-sm leading-5 text-muted">
+              Também pode medir o uso do site com Google Analytics. É
+              opcional, não inclui a sua lista de votos e não serve para
+              anúncios.
+            </span>
+          </label>
 
           <div className="mt-6 grid gap-2">
             <button

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { AnalyticsConsentToggle } from "@/components/analytics-consent-toggle";
 import { DeleteLocalDataButton } from "@/components/delete-local-data-button";
 import { LegalPage } from "@/components/legal-page";
 import { CONTROLLER_NAME, PRIVACY_EMAIL } from "@/lib/legal";
@@ -42,7 +43,7 @@ export default function PrivacidadePage() {
       )}
 
       <h2>2. Quais dados usamos</h2>
-      <p>Há dois tipos de informação neste serviço:</p>
+      <p>Há três tipos de informação neste serviço:</p>
       <ul>
         <li>
           <strong>Dados públicos de candidatos</strong>, publicados pelo TSE e,
@@ -55,6 +56,13 @@ export default function PrivacidadePage() {
           sensível. Essa lista fica <strong>somente neste celular ou
           computador</strong>. Nós não recebemos essa lista em um servidor
           nosso.
+        </li>
+        <li>
+          <strong>Estatísticas de uso</strong>, só se você autorizar o Google
+          Analytics. Nesse caso o Google pode registrar páginas visitadas,
+          tipo de aparelho, navegador, origem do acesso e localização
+          aproximada (cidade). Isso <strong>não inclui</strong> a sua lista de
+          votos, nome, CPF nem conta.
         </li>
       </ul>
       <p>Não pedimos nome, CPF, e-mail, telefone nem criamos conta.</p>
@@ -77,6 +85,11 @@ export default function PrivacidadePage() {
           legal e segurança (art. 7º, II e VI), pelo tempo necessário do
           provedor.
         </li>
+        <li>
+          <strong>Estatísticas de uso (Google Analytics):</strong>
+          consentimento (art. 7º, I, da LGPD). Sem o seu ok, o script do
+          Google não é carregado e não gravamos cookies de medição.
+        </li>
       </ul>
       <p>
         Você pode recusar o armazenamento da lista. Nesse caso o app ainda
@@ -87,7 +100,7 @@ export default function PrivacidadePage() {
       <ul>
         <li>Não vendemos dados.</li>
         <li>Não usamos a sua lista para propaganda eleitoral.</li>
-        <li>Não rastreamos você com cookies de publicidade.</li>
+        <li>Não rastreamos você com cookies de publicidade nem Google Ads.</li>
         <li>Não enviamos a sua colinha para WhatsApp, e-mail ou redes — só você pode compartilhar um candidato, se quiser.</li>
       </ul>
 
@@ -100,12 +113,24 @@ export default function PrivacidadePage() {
         <li>Tribunal Superior Eleitoral (DivulgaCandContas);</li>
         <li>CNJ / Datajud, só se você abrir processos judiciais;</li>
         <li>Google Notícias, só se você abrir a seção de notícias.</li>
+        <li>
+          Google LLC (Google Analytics), só se você autorizar as estatísticas
+          de uso.
+        </li>
       </ul>
       <p>
         O site é hospedado em infraestrutura de nuvem (por exemplo, Vercel).
         Esses provedores podem processar dados técnicos fora do Brasil. Quando
         isso ocorre, buscamos salvaguardas compatíveis com os arts. 33 a 36 da
         LGPD.
+      </p>
+      <p>
+        Se você autorizar o Google Analytics, o Google processa os dados de
+        medição, inclusive fora do Brasil (em especial nos Estados Unidos),
+        segundo a política e os termos de processamento deles. Essa
+        transferência internacional depende do seu consentimento (arts. 7º, I,
+        e 33 da LGPD). Você pode recusar ou retirar o ok a qualquer momento,
+        neste aparelho.
       </p>
       <p>
         Se você toca em <strong>Enviar para alguém</strong>, o link contém só
@@ -115,24 +140,37 @@ export default function PrivacidadePage() {
 
       <h2>6. Cookies e armazenamento local</h2>
       <p>
-        Não usamos cookies de marketing. Depois do seu ok, o aplicativo grava
-        no armazenamento local do navegador (localStorage):
+        Não usamos cookies de marketing nem de publicidade. Depois do seu ok,
+        o aplicativo grava no armazenamento local do navegador (localStorage):
       </p>
       <ul>
         <li>o estado que você escolheu;</li>
         <li>os candidatos ou partidos da sua lista;</li>
-        <li>a data do seu consentimento.</li>
+        <li>a data do seu consentimento para guardar a lista;</li>
+        <li>a sua escolha sobre estatísticas de uso, se você decidir.</li>
       </ul>
       <p>
         Isso não viaja com você para outro celular. Se você limpar os dados do
         site no navegador, a lista some.
       </p>
+      <p>
+        Cookies do Google Analytics (_ga e similares) só são gravados se você
+        autorizar a medição. Sem esse ok, o tag do Google nem chega a
+        carregar. A medição é usada para entender quais páginas funcionam, com
+        IP truncado, sem sinais de anúncio e sem cruzar com a sua colinha.
+      </p>
+      <AnalyticsConsentToggle />
 
       <h2>7. Por quanto tempo</h2>
       <p>
         A lista permanece neste aparelho até você apagar, tocar em Recomeçar
         ou recusar/retirar o consentimento. Não definimos prazo em servidor
         porque a lista não é enviada para nós.
+      </p>
+      <p>
+        Os dados de estatística, se autorizados, ficam no Google Analytics
+        pelo prazo da conta de medição e nos cookies do navegador até você
+        desligar a medição, apagar os dados do site ou limpar os cookies.
       </p>
 
       <h2>8. Seus direitos (art. 18 da LGPD)</h2>
@@ -141,7 +179,7 @@ export default function PrivacidadePage() {
         <li>confirmar se tratamos dados e acessar o que está neste aparelho;</li>
         <li>corrigir candidatos na própria lista;</li>
         <li>apagar os dados deste celular;</li>
-        <li>retirar o consentimento;</li>
+        <li>retirar o consentimento da lista e, à parte, o das estatísticas;</li>
         <li>pedir informação sobre compartilhamentos;</li>
         <li>revisar decisões e reclamar à ANPD.</li>
       </ul>
