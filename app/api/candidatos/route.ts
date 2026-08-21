@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { LEGENDA_LENGTH, getCargoConfig, getCargoFromParam } from "@/lib/cargos";
 import { kv } from "@/lib/kv";
+import { isTseLiveEnabled } from "@/lib/tse-live";
 import { getTmntMock, isTmntNumber } from "@/lib/tmnt-mocks";
 import {
   CandidateNotFoundError,
@@ -19,6 +20,7 @@ import {
 import type {
   CandidateListItem,
   CandidatoColinha,
+  CargoSlug,
   PartidoListItem,
 } from "@/lib/types";
 
@@ -37,9 +39,17 @@ const FALLBACK_HEADERS = {
   "X-Data-Source": "kv-fallback",
 };
 
+const CACHE_HEADERS = {
+  "Cache-Control": "private, no-store",
+  "X-Data-Source": "kv",
+};
+
 function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
 }
+
+const TSE_UNAVAILABLE =
+  "Os dados do TSE nesta implantação vêm do cache. Rode npm run sync:tse numa rede doméstica, sem VPN, com as credenciais do Vercel KV.";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -103,8 +113,26 @@ export async function GET(request: Request) {
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const live = isTseLiveEnabled();
 
   try {
+    if (!live) {
+      const cached = await readFromCache(
+        uf,
+        cargo,
+        numero,
+        listMode,
+        partyListMode,
+        legendaMode,
+      );
+
+      if (cached) {
+        return cached;
+      }
+
+      return jsonError(TSE_UNAVAILABLE, 503);
+    }
+
     if (partyListMode) {
       const partidos = await listParties({ uf, cargo }, controller.signal);
 
@@ -223,4 +251,49 @@ async function readCache<T>(key: string): Promise<T | null> {
   } catch {
     return null;
   }
+}
+
+async function readFromCache(
+  uf: string,
+  cargo: CargoSlug,
+  numero: string,
+  listMode: boolean,
+  partyListMode: boolean,
+  legendaMode: boolean,
+) {
+  if (partyListMode) {
+    const partidos = await readCache<PartidoListItem[]>(
+      makePartyListCacheKey(uf, cargo),
+    );
+
+    if (!partidos) {
+      return null;
+    }
+
+    return NextResponse.json({ partidos }, { headers: CACHE_HEADERS });
+  }
+
+  if (listMode) {
+    const candidatos = await readCache<CandidateListItem[]>(
+      makeCandidateListCacheKey(uf, cargo),
+    );
+
+    if (!candidatos) {
+      return null;
+    }
+
+    return NextResponse.json({ candidatos }, { headers: CACHE_HEADERS });
+  }
+
+  const dados = await readCache<CandidatoColinha>(
+    legendaMode
+      ? makePartyCacheKey(uf, cargo, numero)
+      : makeCandidateCacheKey(uf, cargo, numero),
+  );
+
+  if (!dados) {
+    return null;
+  }
+
+  return NextResponse.json(dados, { headers: CACHE_HEADERS });
 }

@@ -5,6 +5,7 @@ import {
   getElectionUf,
   normalizeCandidateNumber,
 } from "@/lib/cargos";
+import { tseFetch } from "@/lib/tse-fetch";
 import type {
   CandidateListItem,
   CandidateLookupParams,
@@ -345,7 +346,7 @@ async function fetchJson<T>(
   url: string,
   init: RequestInit & { next?: { revalidate: number } },
 ): Promise<T> {
-  const response = await fetch(url, init);
+  const response = await tseFetch(url, init);
 
   if (!response.ok) {
     throw new Error(`TSE respondeu ${response.status} em ${url}`);
@@ -391,7 +392,8 @@ export function makeCandidateCacheKey(
   numero: string,
 ): string {
   const config = getCargoConfig(cargo, uf);
-  return `cand:2026:${uf}:${config.tseCode}:${formatCandidateNumber(numero, config.maxLength)}`;
+  const electionUf = getElectionUf(cargo, uf);
+  return `cand:2026:${electionUf}:${config.tseCode}:${formatCandidateNumber(numero, config.maxLength)}`;
 }
 
 export function makeCandidateListCacheKey(
@@ -399,7 +401,8 @@ export function makeCandidateListCacheKey(
   cargo: CargoSlug,
 ): string {
   const config = getCargoConfig(cargo, uf);
-  return `cand-list:2026:${uf}:${config.tseCode}`;
+  const electionUf = getElectionUf(cargo, uf);
+  return `cand-list:2026:${electionUf}:${config.tseCode}`;
 }
 
 export function makePartyCacheKey(
@@ -408,12 +411,14 @@ export function makePartyCacheKey(
   numero: string,
 ): string {
   const config = getCargoConfig(cargo, uf);
-  return `legenda:2026:${uf}:${config.tseCode}:${formatCandidateNumber(numero, LEGENDA_LENGTH)}`;
+  const electionUf = getElectionUf(cargo, uf);
+  return `legenda:2026:${electionUf}:${config.tseCode}:${formatCandidateNumber(numero, LEGENDA_LENGTH)}`;
 }
 
 export function makePartyListCacheKey(uf: string, cargo: CargoSlug): string {
   const config = getCargoConfig(cargo, uf);
-  return `partido-list:2026:${uf}:${config.tseCode}`;
+  const electionUf = getElectionUf(cargo, uf);
+  return `partido-list:2026:${electionUf}:${config.tseCode}`;
 }
 
 export async function listCandidates(

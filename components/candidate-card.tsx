@@ -239,6 +239,7 @@ export function CandidateCard({
               fill
               sizes="112px"
               className="object-contain"
+              unoptimized
               onError={() => setImageFailed(true)}
             />
           ) : (

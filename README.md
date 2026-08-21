@@ -22,8 +22,20 @@ Copie `.env.example` para `.env.local` se precisar configurar um endpoint
 alternativo ou o Redis da Vercel:
 
 - `TSE_BASE_URL`: base da API DivulgaCandContas.
+- `TSE_LIVE`: `1` força consulta ao vivo; `0` serve só o cache. Na Vercel o padrão é só cache — o Akamai do TSE bloqueia o IP da plataforma.
 - `KV_REST_API_URL` e `KV_REST_API_TOKEN`: credenciais do Vercel KV/Upstash.
 - `DATAJUD_API_KEY`: chave privada do CNJ para consultar processos judiciais.
+
+Na Vercel a API do TSE não é consultada ao vivo. O GitHub Actions roda
+`npm run sync:tse` a cada 2 horas (`/.github/workflows/sync-tse.yml`).
+Configure os secrets `KV_REST_API_URL` e `KV_REST_API_TOKEN` no repositório
+(as mesmas do Vercel KV). Também dá para popular o cache à mão:
+
+```bash
+npm run sync:tse -- --uf SP
+npm run sync:tse -- --uf SP --lists-only
+npm run sync:tse
+```
 
 ## Arquitetura
 

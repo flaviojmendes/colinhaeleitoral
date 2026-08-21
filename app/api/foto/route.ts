@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { tseFetch } from "@/lib/tse-fetch";
+
 export const preferredRegion = "gru1";
 export const runtime = "nodejs";
 
@@ -28,7 +30,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const response = await fetch(target.toString(), {
+    const response = await tseFetch(target.toString(), {
       headers: { Accept: "image/*" },
       next: { revalidate: 86_400 },
     });

@@ -12,9 +12,13 @@ interface KvAdapter {
 
 const memoryStore = new Map<string, MemoryValue>();
 const MEMORY_TTL_MS = 1000 * 60 * 60 * 24 * 30;
-const hasVercelKv =
-  Boolean(process.env.KV_REST_API_URL) &&
-  Boolean(process.env.KV_REST_API_TOKEN);
+
+function hasVercelKv() {
+  return (
+    Boolean(process.env.KV_REST_API_URL) &&
+    Boolean(process.env.KV_REST_API_TOKEN)
+  );
+}
 
 const memoryKv: KvAdapter = {
   async get<T>(key: string) {
@@ -40,18 +44,25 @@ const memoryKv: KvAdapter = {
   },
 };
 
-export const kv: KvAdapter = hasVercelKv
-  ? {
-      async get<T>(key: string) {
-        return vercelKv.get<T>(key);
-      },
-      async set(key: string, value: unknown, ttlSeconds?: number) {
-        if (ttlSeconds) {
-          await vercelKv.set(key, value, { ex: ttlSeconds });
-          return;
-        }
-
-        await vercelKv.set(key, value);
-      },
+export const kv: KvAdapter = {
+  async get<T>(key: string) {
+    if (hasVercelKv()) {
+      return vercelKv.get<T>(key);
     }
-  : memoryKv;
+
+    return memoryKv.get<T>(key);
+  },
+  async set(key: string, value: unknown, ttlSeconds?: number) {
+    if (hasVercelKv()) {
+      if (ttlSeconds) {
+        await vercelKv.set(key, value, { ex: ttlSeconds });
+        return;
+      }
+
+      await vercelKv.set(key, value);
+      return;
+    }
+
+    await memoryKv.set(key, value, ttlSeconds);
+  },
+};

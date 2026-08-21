@@ -6,6 +6,7 @@ import {
 } from "@/lib/cargos";
 import { formatCompactBRL } from "@/lib/format";
 import { kv } from "@/lib/kv";
+import { isTseLiveEnabled } from "@/lib/tse-live";
 import {
   fetchCandidateDetailsById,
   listCandidates,
@@ -699,7 +700,7 @@ export async function getCuriosidades(
   let snapshot = cached;
   let fonte: CuriosidadesResponse["fonte"] = "cache";
 
-  if (!cacheIsFresh) {
+  if (!cacheIsFresh && isTseLiveEnabled()) {
     try {
       snapshot = await fetchSnapshot(uf, signal);
       await writeSnapshotCache(snapshot);
