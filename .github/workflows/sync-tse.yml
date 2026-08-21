@@ -12,6 +12,7 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    environment: Production
     timeout-minutes: 350
     permissions:
       contents: read
@@ -27,9 +28,8 @@ jobs:
         run: |
           if [ -z "$KV_REST_API_URL" ] || [ -z "$KV_REST_API_TOKEN" ]; then
             echo "::error::KV_REST_API_URL / KV_REST_API_TOKEN vazios neste job."
-            echo "Crie em Settings → Secrets and variables → Actions → Secrets"
-            echo "(aba Secrets, não Variables; não Codespaces; não Environment)."
-            echo "Nomes exatos, em maiúsculas: KV_REST_API_URL e KV_REST_API_TOKEN"
+            echo "Os secrets estão no environment Production."
+            echo "Confirme que o job tem environment: Production e que os nomes são KV_REST_API_URL e KV_REST_API_TOKEN."
             exit 1
           fi
           echo "KV_REST_API_URL ok (${#KV_REST_API_URL} chars)"

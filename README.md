@@ -28,9 +28,9 @@ alternativo ou o Redis da Vercel:
 
 Na Vercel a API do TSE não é consultada ao vivo. O GitHub Actions roda
 `npm run sync:tse` a cada 2 horas (`/.github/workflows/sync-tse.yml`).
-Configure em **Settings → Secrets and variables → Actions → Secrets**
-(a aba Secrets, não Variables): `KV_REST_API_URL` e `KV_REST_API_TOKEN`,
-iguais aos do Vercel KV. Também dá para popular o cache à mão:
+Os secrets `KV_REST_API_URL` e `KV_REST_API_TOKEN` ficam no environment
+**Production** do GitHub (Settings → Environments). O workflow já usa
+`environment: Production`. Também dá para popular o cache à mão:
 
 ```bash
 npm run sync:tse -- --uf SP

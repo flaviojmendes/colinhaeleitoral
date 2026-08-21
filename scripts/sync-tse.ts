@@ -66,7 +66,7 @@ async function assertKvConfigured() {
 
   if (process.env.CI) {
     throw new Error(
-      "KV_REST_API_URL e KV_REST_API_TOKEN não chegaram no job. No GitHub: Settings → Secrets and variables → Actions → Secrets (aba Secrets). Nomes exatos em maiúsculas. Não use Variables, Codespaces nem Environment secrets.",
+      "KV_REST_API_URL e KV_REST_API_TOKEN não chegaram no job. No GitHub eles estão no environment Production; o workflow precisa de environment: Production.",
     );
   }
 
