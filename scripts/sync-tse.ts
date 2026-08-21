@@ -57,8 +57,17 @@ async function assertTseReachable() {
 }
 
 async function assertKvConfigured() {
-  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+  const url = process.env.KV_REST_API_URL?.trim();
+  const token = process.env.KV_REST_API_TOKEN?.trim();
+
+  if (url && token) {
     return;
+  }
+
+  if (process.env.CI) {
+    throw new Error(
+      "KV_REST_API_URL e KV_REST_API_TOKEN não chegaram no job. No GitHub: Settings → Secrets and variables → Actions → Secrets (aba Secrets). Nomes exatos em maiúsculas. Não use Variables, Codespaces nem Environment secrets.",
+    );
   }
 
   throw new Error(
@@ -136,7 +145,9 @@ async function syncCargo(
 }
 
 async function main() {
-  loadEnvConfig(process.cwd());
+  if (!process.env.CI) {
+    loadEnvConfig(process.cwd());
+  }
   await assertKvConfigured();
   await assertTseReachable();
 

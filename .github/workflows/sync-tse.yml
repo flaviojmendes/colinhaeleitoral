@@ -16,14 +16,31 @@ jobs:
     permissions:
       contents: read
     env:
-      KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
-      KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
+      # Repository secrets OU variables. Environment secrets só entram se o
+      # job tiver `environment: <nome>`.
+      KV_REST_API_URL: ${{ secrets.KV_REST_API_URL || vars.KV_REST_API_URL }}
+      KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN || vars.KV_REST_API_TOKEN }}
       TSE_LIVE: "1"
     steps:
       - uses: actions/checkout@v4
+      - name: Conferir credenciais do KV
+        run: |
+          if [ -z "$KV_REST_API_URL" ] || [ -z "$KV_REST_API_TOKEN" ]; then
+            echo "::error::KV_REST_API_URL / KV_REST_API_TOKEN vazios neste job."
+            echo "Crie em Settings → Secrets and variables → Actions → Secrets"
+            echo "(aba Secrets, não Variables; não Codespaces; não Environment)."
+            echo "Nomes exatos, em maiúsculas: KV_REST_API_URL e KV_REST_API_TOKEN"
+            exit 1
+          fi
+          echo "KV_REST_API_URL ok (${#KV_REST_API_URL} chars)"
+          echo "KV_REST_API_TOKEN ok (${#KV_REST_API_TOKEN} chars)"
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
       - run: npm ci
       - run: npm run sync:tse
+        env:
+          KV_REST_API_URL: ${{ secrets.KV_REST_API_URL || vars.KV_REST_API_URL }}
+          KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN || vars.KV_REST_API_TOKEN }}
+          TSE_LIVE: "1"
