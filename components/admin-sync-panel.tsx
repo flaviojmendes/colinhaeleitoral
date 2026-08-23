@@ -27,6 +27,7 @@ import {
   type TseFetch,
 } from "@/lib/tse";
 import { createPonteFetch, isPonteWindow } from "@/lib/tse-ponte";
+import { ponteBookmarklet } from "@/lib/tse-ponte-script";
 import type { CargoSlug, GastosPartido } from "@/lib/types";
 
 const UNIQUE_CARGOS = CARGOS_2026.filter((cargo, index, items) => {
@@ -46,7 +47,7 @@ interface LogEntry {
 }
 
 function bookmarkletFor(origin: string): string {
-  return `javascript:void(function(){var s=document.createElement('script');s.src='${origin}/admin/ponte?t='+Date.now();document.documentElement.appendChild(s);}())`;
+  return ponteBookmarklet(origin);
 }
 
 function planJobs(ufs: string[], cargos: CargoSlug[]) {
@@ -666,20 +667,22 @@ export function AdminSyncPanel({ configured, ponte }: AdminSyncPanelProps) {
       {!ponteActive ? (
         <section className="mt-6 rounded-2xl border border-coral/40 bg-console p-4">
           <h2 className="font-bold text-console-ink">Modo ponte</h2>
-          <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-console-muted">
-            <li>Copie o atalho abaixo.</li>
-            <li>
-              No Safari ou Chrome, crie um favorito qualquer e cole esse código
-              no lugar do endereço.
-            </li>
-            <li>Abra o site do TSE, toque no favorito e deixe a aba aberta.</li>
-          </ol>
+          <p className="mt-2 text-sm text-console-muted">
+            No Chrome do Android o atalho javascript não abre. Use a página de
+            instalação no Firefox ou no Kiwi.
+          </p>
+          <a
+            href="/admin/ponte"
+            className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-xl bg-coral-deep px-4 font-bold text-coral-ink"
+          >
+            Ativar ponte neste tablet
+          </a>
           <button
             type="button"
             onClick={copyBookmarklet}
-            className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-xl bg-coral-deep px-4 font-bold text-coral-ink"
+            className="mt-3 inline-flex h-12 w-full items-center justify-center rounded-xl border border-console-edge px-4 font-bold text-console-ink"
           >
-            {copied ? "Atalho copiado" : "Copiar atalho da ponte"}
+            {copied ? "Atalho copiado" : "Copiar atalho (Firefox / iPhone)"}
           </button>
         </section>
       ) : null}
