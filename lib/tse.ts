@@ -31,8 +31,8 @@ export const TSE_PAGE_ORIGIN = "https://divulgacandcontas.tse.jus.br";
 export const TSE_PAGE_URL = `${TSE_PAGE_ORIGIN}/divulga/`;
 
 export type TseFetch = (
-  input: RequestInfo | URL,
-  init?: RequestInit,
+  url: string,
+  init?: RequestInit & { next?: { revalidate: number } },
 ) => Promise<Response>;
 
 export class CandidateNotFoundError extends Error {

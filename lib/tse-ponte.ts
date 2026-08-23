@@ -23,7 +23,7 @@ export function isPonteWindow(): boolean {
 }
 
 export function createPonteFetch(): TseFetch {
-  return (input, init) => {
+  return (url, init) => {
     return new Promise((resolve, reject) => {
       const target = window.parent !== window ? window.parent : window.opener;
       if (!target) {
@@ -36,7 +36,6 @@ export function createPonteFetch(): TseFetch {
       }
 
       const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      const url = String(input);
       const timer = window.setTimeout(() => {
         window.removeEventListener("message", onMessage);
         reject(new Error("A ponte com o TSE não respondeu."));
