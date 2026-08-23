@@ -5,7 +5,7 @@ import {
   getElectionUf,
   normalizeCandidateNumber,
 } from "@/lib/cargos";
-import { tseFetch } from "@/lib/tse-fetch";
+import { tseFetch as defaultTseFetch } from "@/lib/tse-fetch";
 import type {
   CandidateListItem,
   CandidateLookupParams,
@@ -27,6 +27,13 @@ export const TSE_BASE_URL =
   "https://divulgacandcontas.tse.jus.br/divulga/rest/v1";
 export const TSE_ELECTION_ID = "20322002026";
 export const TSE_ELECTION_YEAR = "2026";
+export const TSE_PAGE_ORIGIN = "https://divulgacandcontas.tse.jus.br";
+export const TSE_PAGE_URL = `${TSE_PAGE_ORIGIN}/divulga/`;
+
+export type TseFetch = (
+  input: RequestInfo | URL,
+  init?: RequestInit,
+) => Promise<Response>;
 
 export class CandidateNotFoundError extends Error {
   constructor() {
@@ -58,7 +65,7 @@ function asNumber(value: number | string | null | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function partyNumberFromCandidateNumber(numero: string): string {
+export function partyNumberFromCandidateNumber(numero: string): string {
   return numero.length <= 2 ? numero : numero.slice(0, 2);
 }
 
@@ -288,7 +295,10 @@ function unavailablePartyExpenses(party: string): GastosPartido {
 }
 
 /** Diretório oficial de partidos da eleição: traz sigla, nome e código do órgão. */
-async function fetchPartyDirectory(signal: AbortSignal): Promise<TSEParty[]> {
+export async function fetchPartyDirectory(
+  signal: AbortSignal,
+  tseFetch: TseFetch = defaultTseFetch,
+): Promise<TSEParty[]> {
   try {
     return await fetchJson<TSEParty[]>(
       `${TSE_BASE_URL}/prestador/campanha/partidos/${TSE_ELECTION_ID}`,
@@ -296,33 +306,40 @@ async function fetchPartyDirectory(signal: AbortSignal): Promise<TSEParty[]> {
         signal,
         next: { revalidate: 3600 },
       },
+      tseFetch,
     );
   } catch {
     return [];
   }
 }
 
-function findPartyInDirectory(parties: TSEParty[], partyNumber: string) {
+export function findPartyInDirectory(parties: TSEParty[], partyNumber: string) {
   return parties.find(
     (item) => String(item.numero) === String(Number(partyNumber)),
   );
 }
 
-async function fetchPartyExpenses(
+export async function fetchPartyExpenses(
   electionUf: string,
   partyNumber: string,
   partyName: string,
   signal: AbortSignal,
+  tseFetch: TseFetch = defaultTseFetch,
+  directory?: TSEParty[],
 ): Promise<GastosPartido> {
   try {
-    const parties = await fetchPartyDirectory(signal);
+    const parties = directory ?? (await fetchPartyDirectory(signal, tseFetch));
     const party = findPartyInDirectory(parties, partyNumber);
     const codigoOrgao = String(party?.sqPrestadorConta ?? partyNumber);
     const accountUrl = `${TSE_BASE_URL}/prestador/consulta/partido/${TSE_ELECTION_ID}/${TSE_ELECTION_YEAR}/${electionUf}/${codigoOrgao}/${partyNumber}`;
-    const account = await fetchJson<TSEAccountsResponse>(accountUrl, {
-      signal,
-      next: { revalidate: 900 },
-    });
+    const account = await fetchJson<TSEAccountsResponse>(
+      accountUrl,
+      {
+        signal,
+        next: { revalidate: 900 },
+      },
+      tseFetch,
+    );
     const despesas = account.despesas;
 
     if (!despesas) {
@@ -342,9 +359,10 @@ async function fetchPartyExpenses(
   }
 }
 
-async function fetchJson<T>(
+export async function fetchJson<T>(
   url: string,
   init: RequestInit & { next?: { revalidate: number } },
+  tseFetch: TseFetch = defaultTseFetch,
 ): Promise<T> {
   const response = await tseFetch(url, init);
 
@@ -367,9 +385,10 @@ async function fetchJson<T>(
 async function fetchJsonOptional<T>(
   url: string,
   init: RequestInit & { next?: { revalidate: number } },
+  tseFetch: TseFetch = defaultTseFetch,
 ): Promise<T | null> {
   try {
-    return await fetchJson<T>(url, init);
+    return await fetchJson<T>(url, init, tseFetch);
   } catch {
     return null;
   }
@@ -421,18 +440,108 @@ export function makePartyListCacheKey(uf: string, cargo: CargoSlug): string {
   return `partido-list:2026:${electionUf}:${config.tseCode}`;
 }
 
+export function isTseCacheKey(key: string): boolean {
+  return /^(cand|cand-list|legenda|partido-list):2026:[A-Z]{2}:\d/.test(key);
+}
+
+export function partiesFromCandidates(
+  candidates: CandidateListItem[],
+  directory: TSEParty[],
+): PartidoListItem[] {
+  const parties = new Map<string, PartidoListItem>();
+
+  candidates.forEach((candidate) => {
+    const numero = partyNumberFromCandidateNumber(candidate.numero);
+    const existing = parties.get(numero);
+
+    if (existing) {
+      existing.totalCandidatos += 1;
+      return;
+    }
+
+    const entry = findPartyInDirectory(directory, numero);
+    parties.set(numero, {
+      numero,
+      sigla: entry?.sigla ?? candidate.partido,
+      nome: entry?.nome ?? candidate.partido,
+      totalCandidatos: 1,
+    });
+  });
+
+  return Array.from(parties.values()).sort(
+    (left, right) => Number(left.numero) - Number(right.numero),
+  );
+}
+
+export function assembleLegenda(params: {
+  uf: string;
+  cargo: CargoSlug;
+  partyNumber: string;
+  nome: string;
+  sigla: string;
+  candidatosNoPartido: number;
+  gastosPartido: GastosPartido;
+}): CandidatoColinha {
+  const { uf, cargo, partyNumber, nome, sigla, candidatosNoPartido, gastosPartido } =
+    params;
+  const config = getCargoConfig(cargo, uf);
+  const electionUf = getElectionUf(cargo, uf);
+
+  return {
+    id: `legenda:${config.tseCode}:${electionUf}:${partyNumber}`,
+    numero: partyNumber,
+    nomeUrna: nome,
+    partido: sigla,
+    cargo,
+    tipoVoto: "legenda",
+    candidatosNoPartido,
+    fotoUrl: null,
+    patrimonioDeclarado: null,
+    totalGastos: gastosPartido.totalContratado,
+    totalGastosPagos: gastosPartido.totalPago,
+    limiteGastos: gastosPartido.limiteGastos,
+    gastosPartido,
+  };
+}
+
+export function candidateFromListItem(
+  item: CandidateListItem,
+  gastosPartido?: GastosPartido,
+): CandidatoColinha {
+  return {
+    id: item.id,
+    numero: item.numero,
+    nomeUrna: item.nomeUrna,
+    partido: item.partido,
+    cargo: item.cargo,
+    tipoVoto: "candidato",
+    fotoUrl: item.fotoUrl,
+    patrimonioDeclarado: null,
+    totalGastos: gastosPartido?.totalContratado ?? null,
+    totalGastosPagos: gastosPartido?.totalPago ?? null,
+    limiteGastos: gastosPartido?.limiteGastos ?? null,
+    gastosPartido,
+    situacao: item.situacao,
+  };
+}
+
 export async function listCandidates(
   params: Omit<CandidateLookupParams, "numero">,
   signal: AbortSignal,
+  tseFetch: TseFetch = defaultTseFetch,
 ): Promise<CandidateListItem[]> {
   const { uf, cargo } = params;
   const config = getCargoConfig(cargo, uf);
   const electionUf = getElectionUf(cargo, uf);
   const listUrl = `${TSE_BASE_URL}/candidatura/listar/${TSE_ELECTION_YEAR}/${electionUf}/${TSE_ELECTION_ID}/${config.tseCode}/candidatos`;
-  const response = await fetchJson<TSECandidateListResponse>(listUrl, {
-    signal,
-    next: { revalidate: 3600 },
-  });
+  const response = await fetchJson<TSECandidateListResponse>(
+    listUrl,
+    {
+      signal,
+      next: { revalidate: 3600 },
+    },
+    tseFetch,
+  );
 
   return (response.candidatos ?? [])
     .map((candidate) => ({
@@ -475,6 +584,7 @@ export async function fetchCandidateDetailsById(
 export async function listParties(
   params: Omit<CandidateLookupParams, "numero">,
   signal: AbortSignal,
+  tseFetch: TseFetch = defaultTseFetch,
 ): Promise<PartidoListItem[]> {
   const { uf, cargo } = params;
   const config = getCargoConfig(cargo, uf);
@@ -484,33 +594,11 @@ export async function listParties(
   }
 
   const [candidates, directory] = await Promise.all([
-    listCandidates(params, signal),
-    fetchPartyDirectory(signal),
+    listCandidates(params, signal, tseFetch),
+    fetchPartyDirectory(signal, tseFetch),
   ]);
 
-  const parties = new Map<string, PartidoListItem>();
-
-  candidates.forEach((candidate) => {
-    const numero = partyNumberFromCandidateNumber(candidate.numero);
-    const existing = parties.get(numero);
-
-    if (existing) {
-      existing.totalCandidatos += 1;
-      return;
-    }
-
-    const entry = findPartyInDirectory(directory, numero);
-    parties.set(numero, {
-      numero,
-      sigla: entry?.sigla ?? candidate.partido,
-      nome: entry?.nome ?? candidate.partido,
-      totalCandidatos: 1,
-    });
-  });
-
-  return Array.from(parties.values()).sort(
-    (left, right) => Number(left.numero) - Number(right.numero),
-  );
+  return partiesFromCandidates(candidates, directory);
 }
 
 /**
@@ -520,6 +608,7 @@ export async function listParties(
 export async function lookupParty(
   params: CandidateLookupParams,
   signal: AbortSignal,
+  tseFetch: TseFetch = defaultTseFetch,
 ): Promise<CandidatoColinha> {
   const { uf, cargo, numero } = params;
   const config = getCargoConfig(cargo, uf);
@@ -542,6 +631,7 @@ export async function lookupParty(
       signal,
       next: { revalidate: 3600 },
     },
+    tseFetch,
   );
 
   // O filtro por partido é aplicado pelo TSE, mas repetimos aqui porque a
@@ -563,75 +653,74 @@ export async function lookupParty(
     "Partido não informado";
 
   const [directory, gastosPartido] = await Promise.all([
-    fetchPartyDirectory(signal),
-    fetchPartyExpenses(electionUf, partyNumber, sigla, signal),
+    fetchPartyDirectory(signal, tseFetch),
+    fetchPartyExpenses(electionUf, partyNumber, sigla, signal, tseFetch),
   ]);
 
   const entry = findPartyInDirectory(directory, partyNumber);
 
-  return {
-    id: `legenda:${config.tseCode}:${electionUf}:${partyNumber}`,
-    numero: partyNumber,
-    nomeUrna: entry?.nome ?? sigla,
-    partido: entry?.sigla ?? sigla,
+  return assembleLegenda({
+    uf,
     cargo,
-    tipoVoto: "legenda",
+    partyNumber,
+    nome: entry?.nome ?? sigla,
+    sigla: entry?.sigla ?? sigla,
     candidatosNoPartido: partyCandidates.length,
-    fotoUrl: null,
-    patrimonioDeclarado: null,
-    totalGastos: gastosPartido.totalContratado,
-    totalGastosPagos: gastosPartido.totalPago,
-    limiteGastos: gastosPartido.limiteGastos,
     gastosPartido,
-  };
+  });
 }
 
-export async function lookupCandidate(
-  params: CandidateLookupParams,
+export async function hydrateCandidate(
+  params: {
+    uf: string;
+    cargo: CargoSlug;
+    numero: string;
+    candidateId: string;
+    partido: string;
+    nomeUrna?: string;
+    nomeCompleto?: string;
+    fotoUrl?: string | null;
+    situacao?: string;
+  },
   signal: AbortSignal,
+  tseFetch: TseFetch = defaultTseFetch,
+  gastosPartido?: GastosPartido,
 ): Promise<CandidatoColinha> {
   const { uf, cargo, numero } = params;
   const config = getCargoConfig(cargo, uf);
   const electionUf = getElectionUf(cargo, uf);
   const formattedNumber = formatCandidateNumber(numero, config.maxLength);
   const partyNumber = partyNumberFromCandidateNumber(formattedNumber);
-
-  const listUrl = new URL(
-    `${TSE_BASE_URL}/candidatura/listar/${TSE_ELECTION_YEAR}/${electionUf}/${TSE_ELECTION_ID}/${config.tseCode}/candidatos`,
-  );
-  listUrl.searchParams.set("partido", partyNumber);
-
-  const candidateList = await fetchJson<TSECandidateListResponse>(
-    listUrl.toString(),
-    {
-      signal,
-      next: { revalidate: 3600 },
-    },
-  );
-
-  const summary = findCandidate(candidateList, formattedNumber);
-  if (!summary) {
-    throw new CandidateNotFoundError();
-  }
-
-  const candidateId = encodeURIComponent(String(summary.id));
+  const candidateId = encodeURIComponent(params.candidateId);
   const detailUrl = `${TSE_BASE_URL}/candidatura/buscar/${TSE_ELECTION_YEAR}/${electionUf}/${TSE_ELECTION_ID}/candidato/${candidateId}`;
   const accountsUrl = `${TSE_BASE_URL}/prestador/consulta/${TSE_ELECTION_ID}/${TSE_ELECTION_YEAR}/${electionUf}/${config.tseCode}/${partyNumber}/${formattedNumber}/${candidateId}`;
-  const summaryParty =
-    summary.partido?.sigla ??
-    summary.partido?.nome ??
-    "Partido não informado";
 
-  const [details, accounts, gastosPartido] = await Promise.all([
-    fetchJson<TSECandidateDetails>(detailUrl, {
-      signal,
-      next: { revalidate: 900 },
-    }),
-    fetchJsonOptional<TSEAccountsResponse>(accountsUrl, {
-      signal,
-      next: { revalidate: 900 },
-    }),
-    fetchPartyExpenses(electionUf, partyNumber, summaryParty, signal),
+  const [details, accounts, partyExpenses] = await Promise.all([
+    fetchJson<TSECandidateDetails>(
+      detailUrl,
+      {
+        signal,
+        next: { revalidate: 900 },
+      },
+      tseFetch,
+    ),
+    fetchJsonOptional<TSEAccountsResponse>(
+      accountsUrl,
+      {
+        signal,
+        next: { revalidate: 900 },
+      },
+      tseFetch,
+    ),
+    gastosPartido
+      ? Promise.resolve(gastosPartido)
+      : fetchPartyExpenses(
+          electionUf,
+          partyNumber,
+          params.partido,
+          signal,
+          tseFetch,
+        ),
   ]);
 
   const patrimonioDeclarado = Array.isArray(details.bens)
@@ -658,30 +747,84 @@ export async function lookupCandidate(
   const partido =
     details.partido?.sigla ??
     details.partido?.nome ??
-    summaryParty;
+    params.partido;
 
   return {
-    id: String(details.id ?? summary.id),
-    numero: formatCandidateNumber(details.numero ?? summary.numero ?? numero, config.maxLength),
-    nomeCompleto: details.nomeCompleto ?? summary.nomeCompleto ?? undefined,
-    nomeUrna: details.nomeUrna ?? summary.nomeUrna ?? "Nome não informado",
+    id: String(details.id ?? params.candidateId),
+    numero: formatCandidateNumber(
+      details.numero ?? params.numero,
+      config.maxLength,
+    ),
+    nomeCompleto: details.nomeCompleto ?? params.nomeCompleto,
+    nomeUrna: details.nomeUrna ?? params.nomeUrna ?? "Nome não informado",
     partido,
     cargo,
     tipoVoto: "candidato",
-    fotoUrl: details.fotoUrl ?? summary.fotoUrl ?? null,
+    fotoUrl: details.fotoUrl ?? params.fotoUrl ?? null,
     patrimonioDeclarado,
     totalGastos: asNumber(accounts?.despesas?.totalDespesasContratadas),
     patrimonioDetalhes,
     gastosDetalhes,
-    gastosPartido,
+    gastosPartido: partyExpenses,
     certidoes,
     totalGastosPagos: asNumber(accounts?.despesas?.totalDespesasPagas),
     limiteGastos: asNumber(accounts?.despesas?.valorLimiteDeGastos),
     situacao:
       details.descricaoSituacaoCandidato ??
       details.descricaoSituacao ??
-      summary.descricaoSituacaoCandidato ??
-      summary.descricaoSituacao ??
-      undefined,
+      params.situacao,
   };
+}
+
+export async function lookupCandidate(
+  params: CandidateLookupParams,
+  signal: AbortSignal,
+  tseFetch: TseFetch = defaultTseFetch,
+): Promise<CandidatoColinha> {
+  const { uf, cargo, numero } = params;
+  const config = getCargoConfig(cargo, uf);
+  const electionUf = getElectionUf(cargo, uf);
+  const formattedNumber = formatCandidateNumber(numero, config.maxLength);
+  const partyNumber = partyNumberFromCandidateNumber(formattedNumber);
+
+  const listUrl = new URL(
+    `${TSE_BASE_URL}/candidatura/listar/${TSE_ELECTION_YEAR}/${electionUf}/${TSE_ELECTION_ID}/${config.tseCode}/candidatos`,
+  );
+  listUrl.searchParams.set("partido", partyNumber);
+
+  const candidateList = await fetchJson<TSECandidateListResponse>(
+    listUrl.toString(),
+    {
+      signal,
+      next: { revalidate: 3600 },
+    },
+    tseFetch,
+  );
+
+  const summary = findCandidate(candidateList, formattedNumber);
+  if (!summary) {
+    throw new CandidateNotFoundError();
+  }
+
+  return hydrateCandidate(
+    {
+      uf,
+      cargo,
+      numero: formattedNumber,
+      candidateId: String(summary.id),
+      partido:
+        summary.partido?.sigla ??
+        summary.partido?.nome ??
+        "Partido não informado",
+      nomeUrna: summary.nomeUrna ?? undefined,
+      nomeCompleto: summary.nomeCompleto ?? undefined,
+      fotoUrl: summary.fotoUrl ?? null,
+      situacao:
+        summary.descricaoSituacaoCandidato ??
+        summary.descricaoSituacao ??
+        undefined,
+    },
+    signal,
+    tseFetch,
+  );
 }

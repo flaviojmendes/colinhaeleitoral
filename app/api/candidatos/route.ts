@@ -34,14 +34,14 @@ const TSE_HEADERS = {
   "X-Data-Source": "tse",
 };
 
-const FALLBACK_HEADERS = {
-  "Cache-Control": "private, no-store",
-  "X-Data-Source": "kv-fallback",
-};
-
 const CACHE_HEADERS = {
   "Cache-Control": "private, no-store",
   "X-Data-Source": "kv",
+};
+
+const FALLBACK_HEADERS = {
+  "Cache-Control": "private, no-store",
+  "X-Data-Source": "kv-fallback",
 };
 
 function jsonError(message: string, status: number) {
@@ -109,6 +109,34 @@ export async function GET(request: Request) {
         : `O número de ${config.label} deve ter ${config.maxLength} dígitos.`,
       400,
     );
+  }
+
+  if (partyListMode) {
+    const cached = await readCache<PartidoListItem[]>(
+      makePartyListCacheKey(uf, cargo),
+    );
+    if (cached) {
+      return NextResponse.json({ partidos: cached }, { headers: CACHE_HEADERS });
+    }
+  } else if (listMode) {
+    const cached = await readCache<CandidateListItem[]>(
+      makeCandidateListCacheKey(uf, cargo),
+    );
+    if (cached) {
+      return NextResponse.json(
+        { candidatos: cached },
+        { headers: CACHE_HEADERS },
+      );
+    }
+  } else {
+    const cached = await readCache<CandidatoColinha>(
+      legendaMode
+        ? makePartyCacheKey(uf, cargo, numero)
+        : makeCandidateCacheKey(uf, cargo, numero),
+    );
+    if (cached) {
+      return NextResponse.json(cached, { headers: CACHE_HEADERS });
+    }
   }
 
   const controller = new AbortController();
