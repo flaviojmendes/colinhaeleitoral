@@ -364,22 +364,59 @@ export async function fetchJson<T>(
   init: RequestInit & { next?: { revalidate: number } },
   tseFetch: TseFetch = defaultTseFetch,
 ): Promise<T> {
-  const response = await tseFetch(url, init);
+  const browser = typeof window !== "undefined";
+  const requestInit: RequestInit & { next?: { revalidate: number } } = {
+    ...init,
+  };
 
-  if (!response.ok) {
-    throw new Error(`TSE respondeu ${response.status} em ${url}`);
+  if (browser) {
+    delete requestInit.next;
+    requestInit.credentials = "omit";
+    requestInit.cache = "no-store";
   }
 
-  const text = await response.text();
-  if (!text.trim()) {
-    throw new Error(`TSE retornou resposta vazia em ${url}`);
+  const attempts = browser ? 3 : 1;
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const response = await tseFetch(url, requestInit);
+
+      if (!response.ok) {
+        throw new Error(`TSE respondeu ${response.status} em ${url}`);
+      }
+
+      const text = await response.text();
+      if (!text.trim()) {
+        throw new Error(`TSE retornou resposta vazia em ${url}`);
+      }
+
+      try {
+        return JSON.parse(text) as T;
+      } catch {
+        throw new Error(`TSE retornou JSON inválido em ${url}`);
+      }
+    } catch (error) {
+      lastError = error;
+      const aborted =
+        (error instanceof DOMException && error.name === "AbortError") ||
+        init.signal?.aborted;
+      const message = error instanceof Error ? error.message : String(error);
+      const retryable = /networkerror|failed to fetch|load failed|network request failed/i.test(
+        message,
+      );
+
+      if (aborted || !retryable || attempt === attempts - 1) {
+        throw error;
+      }
+
+      await new Promise((resolve) => {
+        setTimeout(resolve, 700 * (attempt + 1));
+      });
+    }
   }
 
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    throw new Error(`TSE retornou JSON inválido em ${url}`);
-  }
+  throw lastError;
 }
 
 async function fetchJsonOptional<T>(
@@ -525,6 +562,46 @@ export function candidateFromListItem(
   };
 }
 
+export function partyNumbersFromDirectory(directory: TSEParty[]): string[] {
+  const numbers = new Set<string>();
+
+  for (const party of directory) {
+    if (party.numero === null || party.numero === undefined || party.numero === "") {
+      continue;
+    }
+
+    numbers.add(formatCandidateNumber(party.numero, LEGENDA_LENGTH));
+  }
+
+  return Array.from(numbers).sort((left, right) => Number(left) - Number(right));
+}
+
+function mapCandidateList(
+  response: TSECandidateListResponse,
+  uf: string,
+  cargo: CargoSlug,
+): CandidateListItem[] {
+  const config = getCargoConfig(cargo, uf);
+
+  return (response.candidatos ?? [])
+    .map((candidate) => ({
+      id: String(candidate.id),
+      numero: formatCandidateNumber(candidate.numero ?? "", config.maxLength),
+      nomeUrna: candidate.nomeUrna ?? "Nome não informado",
+      partido:
+        candidate.partido?.sigla ??
+        candidate.partido?.nome ??
+        "Partido não informado",
+      cargo,
+      fotoUrl: candidate.fotoUrl ?? null,
+      situacao:
+        candidate.descricaoSituacaoCandidato ??
+        candidate.descricaoSituacao ??
+        undefined,
+    }))
+    .sort((left, right) => Number(left.numero) - Number(right.numero));
+}
+
 export async function listCandidates(
   params: Omit<CandidateLookupParams, "numero">,
   signal: AbortSignal,
@@ -543,26 +620,82 @@ export async function listCandidates(
     tseFetch,
   );
 
-  return (response.candidatos ?? [])
-    .map((candidate) => ({
-      id: String(candidate.id),
-      numero: formatCandidateNumber(
-        candidate.numero ?? "",
-        config.maxLength,
-      ),
-      nomeUrna: candidate.nomeUrna ?? "Nome não informado",
-      partido:
-        candidate.partido?.sigla ??
-        candidate.partido?.nome ??
-        "Partido não informado",
-      cargo,
-      fotoUrl: candidate.fotoUrl ?? null,
-      situacao:
-        candidate.descricaoSituacaoCandidato ??
-        candidate.descricaoSituacao ??
-        undefined,
-    }))
-    .sort((left, right) => Number(left.numero) - Number(right.numero));
+  return mapCandidateList(response, uf, cargo);
+}
+
+export async function listCandidatesChunked(
+  params: Omit<CandidateLookupParams, "numero">,
+  signal: AbortSignal,
+  tseFetch: TseFetch,
+  partyNumbers: string[],
+  delayMs = 250,
+  onProgress?: (done: number, total: number, found: number) => void,
+): Promise<CandidateListItem[]> {
+  const { uf, cargo } = params;
+  const config = getCargoConfig(cargo, uf);
+  const electionUf = getElectionUf(cargo, uf);
+  const merged = new Map<string, CandidateListItem>();
+
+  for (let index = 0; index < partyNumbers.length; index += 1) {
+    if (signal.aborted) {
+      throw new DOMException("Aborted", "AbortError");
+    }
+
+    const partyNumber = formatCandidateNumber(partyNumbers[index], LEGENDA_LENGTH);
+    const listUrl = new URL(
+      `${TSE_BASE_URL}/candidatura/listar/${TSE_ELECTION_YEAR}/${electionUf}/${TSE_ELECTION_ID}/${config.tseCode}/candidatos`,
+    );
+    listUrl.searchParams.set("partido", partyNumber);
+
+    try {
+      const response = await fetchJson<TSECandidateListResponse>(
+        listUrl.toString(),
+        { signal },
+        tseFetch,
+      );
+
+      for (const candidate of mapCandidateList(response, uf, cargo)) {
+        if (partyNumberFromCandidateNumber(candidate.numero) === partyNumber) {
+          merged.set(candidate.id, candidate);
+        }
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        throw error;
+      }
+    }
+
+    onProgress?.(index + 1, partyNumbers.length, merged.size);
+
+    if (index < partyNumbers.length - 1 && delayMs > 0) {
+      await new Promise<void>((resolve, reject) => {
+        if (signal.aborted) {
+          reject(new DOMException("Aborted", "AbortError"));
+          return;
+        }
+
+        const timer = setTimeout(resolve, delayMs);
+        signal.addEventListener(
+          "abort",
+          () => {
+            clearTimeout(timer);
+            reject(new DOMException("Aborted", "AbortError"));
+          },
+          { once: true },
+        );
+      });
+    }
+  }
+
+  if (merged.size === 0) {
+    throw new Error(
+      "Não foi possível baixar a lista de candidatos. Tente de novo ou use o modo ponte.",
+    );
+  }
+
+  return Array.from(merged.values()).sort(
+    (left, right) => Number(left.numero) - Number(right.numero),
+  );
 }
 
 export async function fetchCandidateDetailsById(

@@ -39,7 +39,7 @@ export function createPonteFetch(): TseFetch {
       const timer = window.setTimeout(() => {
         window.removeEventListener("message", onMessage);
         reject(new Error("A ponte com o TSE não respondeu."));
-      }, 25_000);
+      }, 60_000);
 
       function onMessage(event: MessageEvent) {
         if (event.origin !== TSE_PAGE_ORIGIN || !isPonteResult(event.data)) {

@@ -18,12 +18,14 @@ import {
   fetchPartyExpenses,
   hydrateCandidate,
   listCandidates,
+  listCandidatesChunked,
   makeCandidateCacheKey,
   makeCandidateListCacheKey,
   makePartyCacheKey,
   makePartyListCacheKey,
   partiesFromCandidates,
   partyNumberFromCandidateNumber,
+  partyNumbersFromDirectory,
   type TseFetch,
 } from "@/lib/tse";
 import { createPonteFetch, isPonteWindow } from "@/lib/tse-ponte";
@@ -293,8 +295,29 @@ export function AdminSyncPanel({ configured, ponte }: AdminSyncPanelProps) {
         }
 
         const config = getCargoConfig(job.cargo, job.uf);
-        log(`${job.uf} · ${config.label}: baixando lista…`);
-        const candidatos = await listCandidates(job, controller.signal, tseFetch);
+        const partyNumbers = partyNumbersFromDirectory(directory);
+        log(
+          partyNumbers.length > 0
+            ? `${job.uf} · ${config.label}: baixando lista em ${partyNumbers.length} partidos…`
+            : `${job.uf} · ${config.label}: baixando lista…`,
+        );
+        const candidatos =
+          partyNumbers.length > 0
+            ? await listCandidatesChunked(
+                job,
+                controller.signal,
+                tseFetch,
+                partyNumbers,
+                delayMs,
+                (done, total, found) => {
+                  if (done === total || done % 5 === 0) {
+                    log(
+                      `${job.uf} · ${config.label}: partidos ${done}/${total}, ${found} candidatos.`,
+                    );
+                  }
+                },
+              )
+            : await listCandidates(job, controller.signal, tseFetch);
         await ingest(token, [
           {
             key: makeCandidateListCacheKey(job.uf, job.cargo),
