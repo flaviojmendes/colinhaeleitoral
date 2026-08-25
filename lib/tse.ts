@@ -359,6 +359,48 @@ export async function fetchPartyExpenses(
   }
 }
 
+export function applyCandidateExpenses(
+  candidate: CandidatoColinha,
+  accounts: TSEAccountsResponse | null | undefined,
+  gastosPartido?: GastosPartido,
+): CandidatoColinha {
+  return {
+    ...candidate,
+    totalGastos: asNumber(accounts?.despesas?.totalDespesasContratadas),
+    totalGastosPagos: asNumber(accounts?.despesas?.totalDespesasPagas),
+    limiteGastos: asNumber(accounts?.despesas?.valorLimiteDeGastos),
+    gastosDetalhes: buildExpenseDetails(accounts),
+    gastosPartido: gastosPartido ?? candidate.gastosPartido,
+  };
+}
+
+export async function fetchCandidateAccounts(
+  params: {
+    uf: string;
+    cargo: CargoSlug;
+    numero: string;
+    candidateId: string;
+  },
+  signal: AbortSignal,
+  tseFetch: TseFetch = defaultTseFetch,
+): Promise<TSEAccountsResponse | null> {
+  const { uf, cargo, numero, candidateId } = params;
+  const config = getCargoConfig(cargo, uf);
+  const electionUf = getElectionUf(cargo, uf);
+  const formattedNumber = formatCandidateNumber(numero, config.maxLength);
+  const partyNumber = partyNumberFromCandidateNumber(formattedNumber);
+  const accountsUrl = `${TSE_BASE_URL}/prestador/consulta/${TSE_ELECTION_ID}/${TSE_ELECTION_YEAR}/${electionUf}/${config.tseCode}/${partyNumber}/${formattedNumber}/${encodeURIComponent(candidateId)}`;
+
+  return fetchJsonOptional<TSEAccountsResponse>(
+    accountsUrl,
+    {
+      signal,
+      next: { revalidate: 0 },
+    },
+    tseFetch,
+  );
+}
+
 export async function fetchJson<T>(
   url: string,
   init: RequestInit & { next?: { revalidate: number } },

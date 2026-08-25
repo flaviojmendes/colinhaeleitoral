@@ -6,6 +6,8 @@ import { tseFetch } from "@/lib/tse-fetch";
 import {
   TSE_BASE_URL,
   TSE_ELECTION_ID,
+  applyCandidateExpenses,
+  fetchCandidateAccounts,
   listCandidates,
   listParties,
   lookupCandidate,
@@ -14,8 +16,9 @@ import {
   makeCandidateListCacheKey,
   makePartyCacheKey,
   makePartyListCacheKey,
+  partyNumberFromCandidateNumber,
 } from "@/lib/tse";
-import type { CargoSlug } from "@/lib/types";
+import type { CandidatoColinha, CargoSlug } from "@/lib/types";
 
 const CARGOS_POR_UF: CargoSlug[] = [
   "governador",
@@ -79,6 +82,7 @@ async function syncCargo(
   uf: string,
   cargo: CargoSlug,
   listsOnly: boolean,
+  gastosOnly: boolean,
   delayMs: number,
 ) {
   const signal = new AbortController().signal;
@@ -119,6 +123,62 @@ async function syncCargo(
     return;
   }
 
+  if (gastosOnly) {
+    let atualizados = 0;
+
+    for (const [index, candidato] of candidatos.entries()) {
+      try {
+        const cacheKey = makeCandidateCacheKey(uf, cargo, candidato.numero);
+        const existing = await kv.get<CandidatoColinha>(cacheKey);
+        const accounts = await fetchCandidateAccounts(
+          {
+            uf,
+            cargo,
+            numero: candidato.numero,
+            candidateId: existing?.id ?? candidato.id,
+          },
+          signal,
+        );
+        const partyRecord = await kv.get<CandidatoColinha>(
+          makePartyCacheKey(
+            uf,
+            cargo,
+            partyNumberFromCandidateNumber(candidato.numero),
+          ),
+        );
+        const base = existing ?? {
+          ...candidato,
+          tipoVoto: "candidato" as const,
+          patrimonioDeclarado: null,
+          totalGastos: null,
+        };
+        await kv.set(
+          cacheKey,
+          applyCandidateExpenses(
+            base,
+            accounts,
+            partyRecord?.gastosPartido ?? existing?.gastosPartido,
+          ),
+        );
+        atualizados += 1;
+      } catch (error) {
+        console.warn(
+          `  ${candidato.numero} gastos falharam:`,
+          error instanceof Error ? error.message : error,
+        );
+      }
+
+      if ((index + 1) % 25 === 0 || index + 1 === candidatos.length) {
+        console.log(`  gastos: ${index + 1}/${candidatos.length}`);
+      }
+
+      await sleep(delayMs);
+    }
+
+    console.log(`  prestações atualizadas: ${atualizados}`);
+    return;
+  }
+
   for (const [index, candidato] of candidatos.entries()) {
     try {
       const detalhes = await lookupCandidate(
@@ -152,6 +212,7 @@ async function main() {
   await assertTseReachable();
 
   const listsOnly = hasFlag("--lists-only");
+  const gastosOnly = hasFlag("--gastos");
   const skipCuriosidades = hasFlag("--skip-curiosidades");
   const delayMs = Number(argValue("--delay") ?? "250") || 250;
   const ufArg = argValue("--uf")?.trim().toUpperCase();
@@ -174,7 +235,7 @@ async function main() {
   }
 
   if (!cargoFilter || cargoFilter === "presidente") {
-    await syncCargo("SP", "presidente", listsOnly, delayMs);
+    await syncCargo("SP", "presidente", listsOnly, gastosOnly, delayMs);
   }
 
   for (const uf of ufs) {
@@ -185,10 +246,10 @@ async function main() {
       : CARGOS_POR_UF;
 
     for (const cargo of cargos) {
-      await syncCargo(uf, cargo, listsOnly, delayMs);
+      await syncCargo(uf, cargo, listsOnly, gastosOnly, delayMs);
     }
 
-    if (!skipCuriosidades && !listsOnly && !cargoFilter) {
+    if (!skipCuriosidades && !listsOnly && !gastosOnly && !cargoFilter) {
       console.log(`\n→ curiosidades ${uf}`);
       await getCuriosidades({ uf }, new AbortController().signal);
     }

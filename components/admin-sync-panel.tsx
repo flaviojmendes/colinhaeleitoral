@@ -13,7 +13,9 @@ import {
   TSE_ELECTION_ID,
   TSE_PAGE_URL,
   assembleLegenda,
+  applyCandidateExpenses,
   candidateFromListItem,
+  fetchCandidateAccounts,
   fetchPartyDirectory,
   fetchPartyExpenses,
   hydrateCandidate,
@@ -30,13 +32,20 @@ import {
 } from "@/lib/tse";
 import { createPonteFetch, isPonteWindow } from "@/lib/tse-ponte";
 import { ponteBookmarklet } from "@/lib/tse-ponte-script";
-import type { CargoSlug, GastosPartido } from "@/lib/types";
+import type {
+  CandidateListItem,
+  CandidatoColinha,
+  CargoSlug,
+  GastosPartido,
+} from "@/lib/types";
 
 const UNIQUE_CARGOS = CARGOS_2026.filter((cargo, index, items) => {
   return items.findIndex((item) => item.tseCode === cargo.tseCode) === index;
 });
 
 const SECRET_STORAGE_KEY = "colinha-admin-secret";
+
+type SyncMode = "completo" | "gastos";
 
 interface AdminSyncPanelProps {
   configured: boolean;
@@ -96,12 +105,15 @@ async function ingest(
   }
 }
 
-async function missingKeys(secret: string, keys: string[]): Promise<string[]> {
-  const missing: string[] = [];
+async function readCachedRecords<T>(
+  secret: string,
+  keys: string[],
+): Promise<Map<string, T>> {
+  const records = new Map<string, T>();
 
-  for (let index = 0; index < keys.length; index += 80) {
-    const chunk = keys.slice(index, index + 80);
-    const response = await fetch("/api/admin/exists", {
+  for (let index = 0; index < keys.length; index += 40) {
+    const chunk = keys.slice(index, index + 40);
+    const response = await fetch("/api/admin/get", {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -114,14 +126,16 @@ async function missingKeys(secret: string, keys: string[]): Promise<string[]> {
       const body = (await response.json().catch(() => null)) as {
         error?: string;
       } | null;
-      throw new Error(body?.error ?? `Falha ao consultar cache (${response.status})`);
+      throw new Error(body?.error ?? `Falha ao ler cache (${response.status})`);
     }
 
-    const payload = (await response.json()) as { missing: string[] };
-    missing.push(...payload.missing);
+    const payload = (await response.json()) as { records: Record<string, T> };
+    Object.entries(payload.records ?? {}).forEach(([key, value]) => {
+      records.set(key, value);
+    });
   }
 
-  return missing;
+  return records;
 }
 
 function sleep(ms: number, signal: AbortSignal) {
@@ -155,6 +169,7 @@ export function AdminSyncPanel({ configured, ponte }: AdminSyncPanelProps) {
   );
   const [includeFichas, setIncludeFichas] = useState(true);
   const [skipCached, setSkipCached] = useState(true);
+  const [syncMode, setSyncMode] = useState<SyncMode>("completo");
   const [delayMs, setDelayMs] = useState(250);
   const [limit, setLimit] = useState("");
   const [running, setRunning] = useState(false);
@@ -267,6 +282,7 @@ export function AdminSyncPanel({ configured, ponte }: AdminSyncPanelProps) {
     const token = secret.trim();
     const maxFichas = Number.parseInt(limit, 10);
     const cap = Number.isFinite(maxFichas) && maxFichas > 0 ? maxFichas : null;
+    const expensesOnly = syncMode === "gastos";
 
     try {
       log(
@@ -288,6 +304,9 @@ export function AdminSyncPanel({ configured, ponte }: AdminSyncPanelProps) {
       const jobs = planJobs(selectedUfs, selectedCargos);
       const directory = await fetchPartyDirectory(controller.signal, tseFetch);
       log(`Diretório de partidos: ${directory.length} siglas.`);
+      if (expensesOnly) {
+        log("Modo diário: só atualiza prestação de contas (gastos).");
+      }
 
       for (const job of jobs) {
         if (controller.signal.aborted) {
@@ -296,35 +315,53 @@ export function AdminSyncPanel({ configured, ponte }: AdminSyncPanelProps) {
 
         const config = getCargoConfig(job.cargo, job.uf);
         const partyNumbers = partyNumbersFromDirectory(directory);
-        log(
-          partyNumbers.length > 0
-            ? `${job.uf} · ${config.label}: baixando lista em ${partyNumbers.length} partidos…`
-            : `${job.uf} · ${config.label}: baixando lista…`,
-        );
-        const candidatos =
-          partyNumbers.length > 0
-            ? await listCandidatesChunked(
-                job,
-                controller.signal,
-                tseFetch,
-                partyNumbers,
-                delayMs,
-                (done, total, found) => {
-                  if (done === total || done % 5 === 0) {
-                    log(
-                      `${job.uf} · ${config.label}: partidos ${done}/${total}, ${found} candidatos.`,
-                    );
-                  }
-                },
-              )
-            : await listCandidates(job, controller.signal, tseFetch);
-        await ingest(token, [
-          {
-            key: makeCandidateListCacheKey(job.uf, job.cargo),
-            value: candidatos,
-          },
-        ]);
-        log(`${job.uf} · ${config.label}: ${candidatos.length} candidatos na lista.`);
+        const listKey = makeCandidateListCacheKey(job.uf, job.cargo);
+        let candidatos: CandidateListItem[] | undefined;
+
+        if (expensesOnly) {
+          const cachedList = await readCachedRecords<CandidateListItem[]>(
+            token,
+            [listKey],
+          );
+          candidatos = cachedList.get(listKey) ?? undefined;
+          if (candidatos) {
+            log(
+              `${job.uf} · ${config.label}: lista em cache, ${candidatos.length} candidatos.`,
+            );
+          }
+        }
+
+        if (!candidatos) {
+          log(
+            partyNumbers.length > 0
+              ? `${job.uf} · ${config.label}: baixando lista em ${partyNumbers.length} partidos…`
+              : `${job.uf} · ${config.label}: baixando lista…`,
+          );
+          candidatos =
+            partyNumbers.length > 0
+              ? await listCandidatesChunked(
+                  job,
+                  controller.signal,
+                  tseFetch,
+                  partyNumbers,
+                  delayMs,
+                  (done, total, found) => {
+                    if (done === total || done % 5 === 0) {
+                      log(
+                        `${job.uf} · ${config.label}: partidos ${done}/${total}, ${found} candidatos.`,
+                      );
+                    }
+                  },
+                )
+              : await listCandidates(job, controller.signal, tseFetch);
+          await ingest(token, [{ key: listKey, value: candidatos }]);
+          log(
+            `${job.uf} · ${config.label}: ${candidatos.length} candidatos na lista.`,
+          );
+        }
+
+        const partyExpenses = new Map<string, GastosPartido>();
+        const electionUf = getElectionUf(job.cargo, job.uf);
 
         if (config.proporcional) {
           const partidos = partiesFromCandidates(candidatos, directory);
@@ -335,9 +372,7 @@ export function AdminSyncPanel({ configured, ponte }: AdminSyncPanelProps) {
             },
           ]);
 
-          const electionUf = getElectionUf(job.cargo, job.uf);
-          const partyExpenses = new Map<string, GastosPartido>();
-
+          let publicados = 0;
           for (const partido of partidos) {
             await sleep(delayMs, controller.signal);
             const gastos = await fetchPartyExpenses(
@@ -348,6 +383,9 @@ export function AdminSyncPanel({ configured, ponte }: AdminSyncPanelProps) {
               tseFetch,
               directory,
             );
+            if (gastos.disponivel) {
+              publicados += 1;
+            }
             partyExpenses.set(partido.numero, gastos);
             await ingest(token, [
               {
@@ -365,36 +403,41 @@ export function AdminSyncPanel({ configured, ponte }: AdminSyncPanelProps) {
             ]);
           }
 
-          log(`${job.uf} · ${config.label}: ${partidos.length} partidos gravados.`);
+          log(
+            `${job.uf} · ${config.label}: gastos de partido ${publicados}/${partidos.length} publicados.`,
+          );
+        }
 
-          if (!includeFichas) {
-            continue;
-          }
+        if (!expensesOnly && !includeFichas) {
+          continue;
+        }
 
-          const slice = cap ? candidatos.slice(0, cap) : candidatos;
-          let pending = slice;
-          if (skipCached) {
-            const keys = slice.map((candidato) =>
-              makeCandidateCacheKey(job.uf, job.cargo, candidato.numero),
-            );
-            const missing = new Set(await missingKeys(token, keys));
-            pending = slice.filter((candidato) =>
-              missing.has(
-                makeCandidateCacheKey(job.uf, job.cargo, candidato.numero),
-              ),
-            );
-            log(
-              `${job.uf} · ${config.label}: ${pending.length} fichas faltando de ${slice.length}.`,
-            );
-          }
+        const slice = cap ? candidatos.slice(0, cap) : candidatos;
+        const fichaKeys = slice.map((candidato) =>
+          makeCandidateCacheKey(job.uf, job.cargo, candidato.numero),
+        );
+        const cachedFichas = await readCachedRecords<CandidatoColinha>(
+          token,
+          fichaKeys,
+        );
 
-          let done = 0;
-          for (const candidato of pending) {
-            await sleep(delayMs, controller.signal);
-            const gastos = partyExpenses.get(
-              partyNumberFromCandidateNumber(candidato.numero),
-            );
-            try {
+        let done = 0;
+        let gastosAtualizados = 0;
+        for (const candidato of slice) {
+          await sleep(delayMs, controller.signal);
+          const cacheKey = makeCandidateCacheKey(
+            job.uf,
+            job.cargo,
+            candidato.numero,
+          );
+          const cached = cachedFichas.get(cacheKey);
+          const gastos = partyExpenses.get(
+            partyNumberFromCandidateNumber(candidato.numero),
+          );
+          const shouldHydrate = !expensesOnly && (!skipCached || !cached);
+
+          try {
+            if (shouldHydrate) {
               const ficha = await hydrateCandidate(
                 {
                   uf: job.uf,
@@ -410,91 +453,63 @@ export function AdminSyncPanel({ configured, ponte }: AdminSyncPanelProps) {
                 tseFetch,
                 gastos,
               );
-              await ingest(token, [
-                {
-                  key: makeCandidateCacheKey(job.uf, job.cargo, candidato.numero),
-                  value: ficha,
-                },
-              ]);
-            } catch (error) {
-              await ingest(token, [
-                {
-                  key: makeCandidateCacheKey(job.uf, job.cargo, candidato.numero),
-                  value: candidateFromListItem(candidato, gastos),
-                },
-              ]);
-              log(
-                `${candidato.numero} ${candidato.nomeUrna}: ficha incompleta (${error instanceof Error ? error.message : "erro"}).`,
-              );
-            }
-            done += 1;
-            if (done % 25 === 0 || done === pending.length) {
-              log(
-                `${job.uf} · ${config.label}: fichas ${done}/${pending.length}.`,
-              );
-            }
-          }
-        } else {
-          if (!includeFichas) {
-            continue;
-          }
-
-          const slice = cap ? candidatos.slice(0, cap) : candidatos;
-          let pending = slice;
-          if (skipCached) {
-            const keys = slice.map((candidato) =>
-              makeCandidateCacheKey(job.uf, job.cargo, candidato.numero),
-            );
-            const missing = new Set(await missingKeys(token, keys));
-            pending = slice.filter((candidato) =>
-              missing.has(
-                makeCandidateCacheKey(job.uf, job.cargo, candidato.numero),
-              ),
-            );
-          }
-
-          let done = 0;
-          for (const candidato of pending) {
-            await sleep(delayMs, controller.signal);
-            try {
-              const ficha = await hydrateCandidate(
+              await ingest(token, [{ key: cacheKey, value: ficha }]);
+            } else {
+              const accounts = await fetchCandidateAccounts(
                 {
                   uf: job.uf,
                   cargo: job.cargo,
                   numero: candidato.numero,
                   candidateId: candidato.id,
-                  partido: candidato.partido,
-                  nomeUrna: candidato.nomeUrna,
-                  fotoUrl: candidato.fotoUrl,
-                  situacao: candidato.situacao,
                 },
                 controller.signal,
                 tseFetch,
               );
+              const partyGastos =
+                gastos ??
+                (await fetchPartyExpenses(
+                  electionUf,
+                  partyNumberFromCandidateNumber(candidato.numero),
+                  candidato.partido,
+                  controller.signal,
+                  tseFetch,
+                  directory,
+                ));
+              const base = cached ?? candidateFromListItem(candidato, partyGastos);
               await ingest(token, [
                 {
-                  key: makeCandidateCacheKey(job.uf, job.cargo, candidato.numero),
-                  value: ficha,
+                  key: cacheKey,
+                  value: applyCandidateExpenses(base, accounts, partyGastos),
                 },
               ]);
-            } catch (error) {
+              gastosAtualizados += 1;
+            }
+          } catch (error) {
+            if (!cached) {
               await ingest(token, [
                 {
-                  key: makeCandidateCacheKey(job.uf, job.cargo, candidato.numero),
-                  value: candidateFromListItem(candidato),
+                  key: cacheKey,
+                  value: candidateFromListItem(candidato, gastos),
                 },
               ]);
-              log(
-                `${candidato.numero} ${candidato.nomeUrna}: ficha incompleta (${error instanceof Error ? error.message : "erro"}).`,
-              );
             }
-            done += 1;
-            if (done % 10 === 0 || done === pending.length) {
-              log(
-                `${job.uf} · ${config.label}: fichas ${done}/${pending.length}.`,
-              );
-            }
+            log(
+              `${candidato.numero} ${candidato.nomeUrna}: ${error instanceof Error ? error.message : "erro"}.`,
+            );
           }
+
+          done += 1;
+          if (done % 25 === 0 || done === slice.length) {
+            log(
+              `${job.uf} · ${config.label}: ${expensesOnly ? "gastos" : "fichas"} ${done}/${slice.length}.`,
+            );
+          }
+        }
+
+        if (gastosAtualizados > 0) {
+          log(
+            `${job.uf} · ${config.label}: ${gastosAtualizados} prestações de contas atualizadas.`,
+          );
         }
       }
 
@@ -617,26 +632,62 @@ export function AdminSyncPanel({ configured, ponte }: AdminSyncPanelProps) {
       </section>
 
       <section className="mt-4 space-y-3 rounded-2xl border border-console-edge bg-console p-4">
-        <label className="flex min-h-12 items-center gap-3">
-          <input
-            type="checkbox"
-            checked={includeFichas}
-            onChange={(event) => setIncludeFichas(event.target.checked)}
-            className="size-5 accent-accent"
-          />
-          <span className="text-console-ink">
-            Baixar fichas completas (bens, gastos e certidões)
-          </span>
-        </label>
-        <label className="flex min-h-12 items-center gap-3">
-          <input
-            type="checkbox"
-            checked={skipCached}
-            onChange={(event) => setSkipCached(event.target.checked)}
-            className="size-5 accent-accent"
-          />
-          <span className="text-console-ink">Pular fichas que já estão no cache</span>
-        </label>
+        <h2 className="font-bold text-console-ink">O que sincronizar</h2>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => setSyncMode("completo")}
+            className={`min-h-12 rounded-xl px-3 text-sm font-bold ${
+              syncMode === "completo"
+                ? "bg-accent text-white"
+                : "bg-console-deep text-console-muted"
+            }`}
+          >
+            Completa
+          </button>
+          <button
+            type="button"
+            onClick={() => setSyncMode("gastos")}
+            className={`min-h-12 rounded-xl px-3 text-sm font-bold ${
+              syncMode === "gastos"
+                ? "bg-accent text-white"
+                : "bg-console-deep text-console-muted"
+            }`}
+          >
+            Só gastos (diário)
+          </button>
+        </div>
+        <p className="text-sm text-console-muted">
+          {syncMode === "gastos"
+            ? "Reconsulta a prestação de contas do TSE e substitui os gastos no cache. Use todo dia; listas e bens ficam como estão."
+            : "Baixa listas e fichas. Gastos de quem já está no cache também são atualizados."}
+        </p>
+        {syncMode === "completo" ? (
+          <>
+            <label className="flex min-h-12 items-center gap-3">
+              <input
+                type="checkbox"
+                checked={includeFichas}
+                onChange={(event) => setIncludeFichas(event.target.checked)}
+                className="size-5 accent-accent"
+              />
+              <span className="text-console-ink">
+                Baixar fichas completas (bens, gastos e certidões)
+              </span>
+            </label>
+            <label className="flex min-h-12 items-center gap-3">
+              <input
+                type="checkbox"
+                checked={skipCached}
+                onChange={(event) => setSkipCached(event.target.checked)}
+                className="size-5 accent-accent"
+              />
+              <span className="text-console-ink">
+                Pular bens e certidões já no cache (gastos sempre atualizam)
+              </span>
+            </label>
+          </>
+        ) : null}
         <label className="block">
           <span className="text-sm text-console-muted">
             Intervalo entre pedidos (ms)
@@ -671,7 +722,11 @@ export function AdminSyncPanel({ configured, ponte }: AdminSyncPanelProps) {
           onClick={startSync}
           className="inline-flex h-12 flex-1 items-center justify-center rounded-xl bg-accent px-4 font-bold text-white"
         >
-          {running ? "Parar" : "Sincronizar neste celular"}
+          {running
+            ? "Parar"
+            : syncMode === "gastos"
+              ? "Atualizar gastos neste celular"
+              : "Sincronizar neste celular"}
         </button>
         <a
           href={TSE_PAGE_URL}
