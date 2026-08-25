@@ -42,9 +42,12 @@ C4Container
 
 1. **Next.js Data Cache** no `fetch` de `lib/tse.ts`: listas e diretório de
    partidos revalidam em 3600s; detalhes, contas e gastos do partido em 900s.
-2. **KV / memória** escrito após sucesso do BFF. Só é lido no `catch` (TSE
-   fora, timeout, JSON inválido). Respostas ao browser vão com
-   `Cache-Control: private, no-store`.
+2. **KV / memória** escrito após sucesso do BFF **ou** por ingest admin.
+   Só é lido no `catch` (TSE fora, timeout, JSON inválido) e, na Vercel, é
+   a fonte padrão: o Akamai bloqueia o ASN da plataforma. Quem preenche o
+   KV — script em ISP ou modo ponte no celular — está em
+   [c4-dynamic-tse-ponte.md](./c4-dynamic-tse-ponte.md). Respostas ao
+   browser vão com `Cache-Control: private, no-store`.
 
 Notícias usam Data Cache de 1h e `max-age=300` no cliente. Processos e o mock
 TMNT não passam pelo KV.

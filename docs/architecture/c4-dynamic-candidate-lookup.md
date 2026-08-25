@@ -1,7 +1,8 @@
 # Dynamic — consulta de candidato
 
 Fluxo mais crítico: o eleitor informa UF, cargo e número (ou escolhe na
-lista). O BFF tenta o TSE ao vivo e só usa o KV se essa chamada falhar.
+lista). Na Vercel o BFF lê o KV. No `dev` com `TSE_LIVE`, tenta o TSE ao
+vivo e só cai no cache se essa chamada falhar.
 
 ```mermaid
 C4Dynamic
@@ -21,6 +22,10 @@ C4Dynamic
   Rel(api, kv, "6. set cache key")
   Rel(api, ui, "7. JSON + X-Data-Source: tse")
 ```
+
+Na Vercel o passo 3 em geral nem dispara: o BFF lê o KV que a ponte ou o
+`sync:tse` gravaram. O diagrama abaixo ainda vale no `dev` local com
+`TSE_LIVE=1`. Ver [c4-dynamic-tse-ponte.md](./c4-dynamic-tse-ponte.md).
 
 ## Fallback (TSE fora ou timeout)
 

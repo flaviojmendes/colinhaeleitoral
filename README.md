@@ -28,6 +28,8 @@ alternativo ou o Redis da Vercel:
 
 Na Vercel a API do TSE não é consultada ao vivo. O GitHub Actions roda
 `npm run sync:tse` a cada 2 horas (`/.github/workflows/sync-tse.yml`).
+Por que o Akamai e o CORS travam a Vercel, e como o modo ponte no celular
+preenche o cache: [docs/architecture/c4-dynamic-tse-ponte.md](./docs/architecture/c4-dynamic-tse-ponte.md).
 Os secrets `KV_REST_API_URL` e `KV_REST_API_TOKEN` ficam no environment
 **Production** do GitHub (Settings → Environments). O workflow já usa
 `environment: Production`. Também dá para popular o cache à mão:
@@ -39,6 +41,8 @@ npm run sync:tse
 ```
 
 ## Arquitetura
+
+Diagramas C4 e fluxos: [docs/architecture](./docs/architecture/README.md).
 
 - `lib/tse.ts`: orquestração dos endpoints do TSE, com busca por partido,
   detalhes/bens e prestação de contas.

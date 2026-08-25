@@ -17,6 +17,7 @@ LGPD.
 | 3 | [c4-components-bff.md](./c4-components-bff.md) | Route handlers e orquestração das APIs |
 | 4 | [c4-deployment.md](./c4-deployment.md) | Vercel `gru1`, KV e o celular do eleitor |
 | Fluxo | [c4-dynamic-candidate-lookup.md](./c4-dynamic-candidate-lookup.md) | Consulta de candidato com cache e fallback |
+| Fluxo | [c4-dynamic-tse-ponte.md](./c4-dynamic-tse-ponte.md) | Travas do TSE, modo ponte e preenchimento do KV |
 | Fluxo | [c4-dynamic-colinha.md](./c4-dynamic-colinha.md) | Montar, persistir, imprimir e compartilhar |
 
 ## Decisões de desenho
@@ -27,6 +28,10 @@ LGPD.
 - **Cache em duas camadas para o TSE.** `fetch` do Next.js revalida (1h nas
   listas, 15 min nos detalhes). Em falha, o BFF devolve a última resposta
   gravada no Vercel KV (ou um `Map` em memória no `dev` local).
+- **KV preenchido fora da Vercel.** O Akamai do TSE bloqueia ASN de
+  datacenter; CORS bloqueia `fetch` da origem da Colinha. Quem grava o
+  cache é um IP de ISP: `npm run sync:tse` no Wi-Fi de casa, ou o modo
+  ponte no celular. Ver [c4-dynamic-tse-ponte.md](./c4-dynamic-tse-ponte.md).
 - **Fonte da verdade no cliente.** Zustand + `localStorage`
   (`colinha-eleitoral-2026`), gated por consentimento LGPD. Sem conta, sem
   backend de usuário.
@@ -49,3 +54,7 @@ LGPD.
 | `GET /api/processos` | Datajud no TJ e TRF da UF |
 | `GET /api/noticias` | RSS do Google Notícias (top 3) |
 | `GET /api/foto` | Proxy allowlist de fotos (TSE, avatares, mock) |
+| `GET /admin/sync` | Painel para popular o KV no celular (`?ponte=1` no iframe) |
+| `GET /admin/ponte` | Instalação do bookmarklet / userscript |
+| `POST /api/admin/ingest` | Grava chaves `cand:*` no KV (senha admin) |
+| `POST /api/admin/exists` | Quais chaves ainda faltam no cache |
