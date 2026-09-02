@@ -1,3 +1,4 @@
+import { mapPool, sleep } from "@/lib/async-pool";
 import {
   LEGENDA_LENGTH,
   formatCandidateNumber,
@@ -672,18 +673,20 @@ export async function listCandidatesChunked(
   partyNumbers: string[],
   delayMs = 250,
   onProgress?: (done: number, total: number, found: number) => void,
+  concurrency = 1,
 ): Promise<CandidateListItem[]> {
   const { uf, cargo } = params;
   const config = getCargoConfig(cargo, uf);
   const electionUf = getElectionUf(cargo, uf);
   const merged = new Map<string, CandidateListItem>();
+  let done = 0;
 
-  for (let index = 0; index < partyNumbers.length; index += 1) {
+  await mapPool(partyNumbers, concurrency, async (rawPartyNumber) => {
     if (signal.aborted) {
       throw new DOMException("Aborted", "AbortError");
     }
 
-    const partyNumber = formatCandidateNumber(partyNumbers[index], LEGENDA_LENGTH);
+    const partyNumber = formatCandidateNumber(rawPartyNumber, LEGENDA_LENGTH);
     const listUrl = new URL(
       `${TSE_BASE_URL}/candidatura/listar/${TSE_ELECTION_YEAR}/${electionUf}/${TSE_ELECTION_ID}/${config.tseCode}/candidatos`,
     );
@@ -707,27 +710,13 @@ export async function listCandidatesChunked(
       }
     }
 
-    onProgress?.(index + 1, partyNumbers.length, merged.size);
+    done += 1;
+    onProgress?.(done, partyNumbers.length, merged.size);
 
-    if (index < partyNumbers.length - 1 && delayMs > 0) {
-      await new Promise<void>((resolve, reject) => {
-        if (signal.aborted) {
-          reject(new DOMException("Aborted", "AbortError"));
-          return;
-        }
-
-        const timer = setTimeout(resolve, delayMs);
-        signal.addEventListener(
-          "abort",
-          () => {
-            clearTimeout(timer);
-            reject(new DOMException("Aborted", "AbortError"));
-          },
-          { once: true },
-        );
-      });
+    if (delayMs > 0) {
+      await sleep(delayMs, signal);
     }
-  }
+  });
 
   if (merged.size === 0) {
     throw new Error(

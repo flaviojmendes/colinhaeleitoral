@@ -37,6 +37,7 @@ Os secrets `KV_REST_API_URL` e `KV_REST_API_TOKEN` ficam no environment
 ```bash
 npm run sync:tse -- --uf SP
 npm run sync:tse -- --uf SP --lists-only
+npm run sync:tse -- --concurrency 8 --delay 50
 npm run sync:tse
 ```
 

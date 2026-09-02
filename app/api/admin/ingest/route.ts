@@ -59,9 +59,7 @@ export async function POST(request: Request) {
     }
   }
 
-  for (const item of items) {
-    await kv.set(item.key, item.value);
-  }
+  await Promise.all(items.map((item) => kv.set(item.key, item.value)));
 
   return NextResponse.json(
     { saved: items.length },
